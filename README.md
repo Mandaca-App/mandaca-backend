@@ -41,6 +41,18 @@ Este repositório contém a API do Mandacá: endpoints REST/HTTP para autentica�
 3. Instale dependências
    `pip install -r requirements.txt`
 
+4. Copiar e preencher as variáveis de ambiente
+   `cp .env.example .env`
+
+5. Subir o banco de dados
+   `docker compose up db -d`
+
+6. Aplicar as migrations
+   `alembic upgrade head`
+
+7. Iniciar a API
+   `uvicorn app.main:app --reload`
+
 ## Boas práticas
 
 * Separe responsabilidades por módulos (routers, services, repositories)
