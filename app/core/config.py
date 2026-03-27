@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     database_url: str
     app_env: str = "development"
     secret_key: str = "dev-secret-key"
-    debug: bool = True
+    app_debug: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",
