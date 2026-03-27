@@ -57,4 +57,14 @@ Este repositório contém a API do Mandacá: endpoints REST/HTTP para autentica�
 
 ---
 
+## Swagger / OpenAPI
+
+Com o backend rodando, a documentacao interativa fica disponivel em:
+
+* Swagger UI: `http://localhost:8000/api-docs`
+* OpenAPI JSON: `http://localhost:8000/api-docs/openapi.json`
+
+A documentacao e gerada automaticamente pelo FastAPI. Sempre que um endpoint novo
+ou parametro novo for criado no codigo, ele aparece no Swagger sem edicao manual.
+
 
