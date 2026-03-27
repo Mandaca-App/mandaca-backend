@@ -1,2 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standard]
+sqlalchemy
+alembic
+psycopg2-binary
+pydantic-settings
+python-dotenv
+pytest
+httpx
