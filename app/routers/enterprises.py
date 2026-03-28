@@ -38,6 +38,13 @@ class EnterpriseResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class EnterprisePercentageResponse(BaseModel):
+    id_empresa: UUID
+    nome: str
+    porcentagem: float
+    campos_preenchidos: list[str]
+    campos_faltando: list[str]
+
 
 @router.get("/", response_model=list[EnterpriseResponse])
 def list_enterprises(db: Session = Depends(get_db)):
@@ -71,7 +78,7 @@ def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
             detail="Usuário vinculado não encontrado",
         )
 
-    if user.empresa_id is not None:
+    if user.empresa is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Este usuário já possui uma empresa vinculada",
@@ -92,8 +99,38 @@ def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(enterprise)
 
-    user.empresa_id = enterprise.id_empresa
-    db.commit()
-    db.refresh(user)
-
     return enterprise
+
+@router.get("/{enterprise_id}/percentage", response_model=EnterprisePercentageResponse)
+def enterprise_percentage(enterprise_id: UUID, db: Session = Depends(get_db)):
+    enterprise = db.get(Enterprise, enterprise_id)
+    if not enterprise:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada",
+        )
+
+    # campos opcionais que contribuem para o perfil completo
+    campos = {
+        "especialidade": enterprise.especialidade,
+        "endereco":      enterprise.endereco,
+        "historia":      enterprise.historia,
+        "hora_abrir":    enterprise.hora_abrir,
+        "hora_fechar":   enterprise.hora_fechar,
+        "telefone":      enterprise.telefone,
+        "fotos":         enterprise.fotos or None,      # lista vazia = não preenchido
+        "cardapios":     enterprise.cardapios or None,  # lista vazia = não preenchido
+    }
+
+    preenchidos = [campo for campo, valor in campos.items() if valor is not None]
+    faltando    = [campo for campo, valor in campos.items() if valor is None]
+
+    porcentagem = round(20 + len(preenchidos) / len(campos) * 80, 1)
+
+    return EnterprisePercentageResponse(
+        id_empresa=enterprise.id_empresa,
+        nome=enterprise.nome,
+        porcentagem=porcentagem,
+        campos_preenchidos=preenchidos,
+        campos_faltando=faltando,
+    )
