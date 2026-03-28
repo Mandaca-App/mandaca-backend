@@ -18,5 +18,5 @@ class Reservation(Base):
     usuario_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True),ForeignKey("usuarios.id_usuario", ondelete="CASCADE"),nullable=True,index=True,)
     empresa_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True),ForeignKey("empresas.id_empresa", ondelete="CASCADE"),nullable=True,index=True,)
 
-    empresa = relationship("Enterprise", back_populates="usuarios")
-    usuarios = relationship("User",back_populates="empresa",passive_deletes=True,)
+    usuario = relationship("User", back_populates="reservas")
+    empresa = relationship("Enterprise", back_populates="reservas")

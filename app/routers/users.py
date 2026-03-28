@@ -15,7 +15,6 @@ class UserCreate(BaseModel):
     tipo_usuario: Optional[TipoUsuario] = TipoUsuario.TURISTA
     nome: str
     cpf: str
-    empresa_id: Optional[UUID] = None
     url_foto_usuario: Optional[str] = None
 
 
@@ -24,15 +23,27 @@ class UserResponse(BaseModel):
     tipo_usuario: TipoUsuario
     nome: str
     cpf: str
-    empresa_id: Optional[UUID] = None
     url_foto_usuario: Optional[str] = None
+    empresa_id: Optional[UUID] = None  # virá da property abaixo
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_user(cls, user: User):
+        return cls(
+            id_usuario=user.id_usuario,
+            tipo_usuario=user.tipo_usuario,
+            nome=user.nome,
+            cpf=user.cpf,
+            url_foto_usuario=user.url_foto_usuario,
+            empresa_id=user.empresa.id_empresa if user.empresa else None,
+        )
 
 
 @router.get("/", response_model=list[UserResponse])
 def list_users(db: Session = Depends(get_db)):
-    return db.query(User).all()
+    users = db.query(User).all()
+    return [UserResponse.from_user(u) for u in users]
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -43,7 +54,7 @@ def get_user(user_id: UUID, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuário não encontrado",
         )
-    return user
+    return UserResponse.from_user(user)
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -59,11 +70,10 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
         tipo_usuario=payload.tipo_usuario,
         nome=payload.nome,
         cpf=payload.cpf,
-        empresa_id=payload.empresa_id,
         url_foto_usuario=payload.url_foto_usuario,
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
-    return user
+    return UserResponse.from_user(user)

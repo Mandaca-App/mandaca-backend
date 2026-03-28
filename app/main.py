@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from app.routers import users
+import app.models
+from app.routers import users, enterprises
 from app.core.config import settings
 
 app = FastAPI(
@@ -8,6 +9,7 @@ app = FastAPI(
 )
 
 app.include_router(users.router)
+app.include_router(enterprises.router)
 
 
 @app.get("/", tags=["health"])
