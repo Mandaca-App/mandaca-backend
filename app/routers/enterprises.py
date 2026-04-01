@@ -58,11 +58,13 @@ class EnterprisePercentageResponse(BaseModel):
 
 @router.get("/", response_model=list[EnterpriseResponse])
 def list_enterprises(db: Session = Depends(get_db)):
+    """Endpoint que retorna uma lista de todos os objetos da entidade empresa no formato 'EnterpriseResponse' """
     return db.query(Enterprise).all()
 
 
 @router.get("/{enterprise_id}", response_model=EnterpriseResponse)
 def get_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)):
+    """Endpoint que retorna um objeto de uma empresa específica pelo ID no formato 'EnterpriseResponse'. """
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(
@@ -74,6 +76,7 @@ def get_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=EnterpriseResponse, status_code=status.HTTP_201_CREATED)
 def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
+    """Endpoint que cria uma nova empresa a partir dos dados enviados no corpo da requisição. """
     existing_name = db.query(Enterprise).filter(Enterprise.nome == payload.nome).first()
     if existing_name:
         raise HTTPException(
@@ -111,8 +114,9 @@ def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
 
     return enterprise
 
-@router.get("/{enterprise_id}/percentage", response_model=EnterprisePercentageResponse)
+@router.get("/percentage/{enterprise_id}", response_model=EnterprisePercentageResponse)
 def enterprise_percentage(enterprise_id: UUID, db: Session = Depends(get_db)):
+    """Endpoint que retorna a porcentagem de preenchimento do perfil da empresa informada pelo ID."""
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(
@@ -146,11 +150,8 @@ def enterprise_percentage(enterprise_id: UUID, db: Session = Depends(get_db)):
     )
 
 @router.put("/{enterprise_id}", response_model=EnterpriseResponse)
-def update_enterprise(
-    enterprise_id: UUID,
-    payload: EnterpriseUpdate,
-    db: Session = Depends(get_db),
-):
+def update_enterprise(enterprise_id: UUID,payload: EnterpriseUpdate,db: Session = Depends(get_db),):
+    """Endpoint que atualiza os dados de uma empresa específica informada pelo ID."""
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(

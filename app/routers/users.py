@@ -47,12 +47,14 @@ class UserResponse(BaseModel):
 
 @router.get("/", response_model=list[UserResponse])
 def list_users(db: Session = Depends(get_db)):
+    """Endpoint que retorna uma lista de todos os objetos da entidade usuario no formato 'UserResponse' """
     users = db.query(User).all()
     return [UserResponse.from_user(u) for u in users]
 
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: UUID, db: Session = Depends(get_db)):
+    """Endpoint que retorna um objeto de um usuario específico pelo ID no formato 'UserResponse'. """
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(
@@ -64,6 +66,7 @@ def get_user(user_id: UUID, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
+    """Endpoint que cria um novo usuario a partir dos dados enviados no corpo da requisição. """
     existing = db.query(User).filter(User.cpf == payload.cpf).first()
     if existing:
         raise HTTPException(
@@ -84,11 +87,8 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     return UserResponse.from_user(user)
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(
-    user_id: UUID,
-    payload: UserUpdate,
-    db: Session = Depends(get_db),
-):
+def update_user(user_id: UUID,payload: UserUpdate,db: Session = Depends(get_db),):
+    """Endpoint que atualiza os dados de um usuário específico informando o ID."""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(
@@ -126,6 +126,7 @@ def update_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: UUID, db: Session = Depends(get_db)):
+    """Endpoint que remove um usuário específico pelo ID."""
     user = db.get(User, user_id)
 
     if not user:
