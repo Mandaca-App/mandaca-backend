@@ -19,6 +19,6 @@ class User(Base):
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     cpf: Mapped[str] = mapped_column(String(11), nullable=False, unique=True)
     url_foto_usuario: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    empresa = relationship("Enterprise", back_populates="usuario",uselist=False,)
+    empresa = relationship("Enterprise",back_populates="usuario",uselist=False,cascade="all, delete-orphan",single_parent=True,passive_deletes=True,)
     reservas = relationship("Reservation",back_populates="usuario",cascade="all, delete-orphan",passive_deletes=True,)
     avaliacoes = relationship("Assessment",back_populates="usuario",cascade="all, delete-orphan",passive_deletes=True,)

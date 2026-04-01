@@ -123,3 +123,17 @@ def update_user(
     db.refresh(user)
 
     return user
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: UUID, db: Session = Depends(get_db)):
+    user = db.get(User, user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não encontrado",
+        )
+
+    db.delete(user)
+    db.commit()
+    return None
