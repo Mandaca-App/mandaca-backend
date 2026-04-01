@@ -17,6 +17,11 @@ class UserCreate(BaseModel):
     cpf: str
     url_foto_usuario: Optional[str] = None
 
+class UserUpdate(BaseModel):
+    tipo_usuario: Optional[TipoUsuario] = None
+    nome: Optional[str] = None
+    cpf: Optional[str] = None
+    url_foto_usuario: Optional[str] = None
 
 class UserResponse(BaseModel):
     id_usuario: UUID
@@ -77,3 +82,44 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return UserResponse.from_user(user)
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: UUID,
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não encontrado",
+        )
+
+    if payload.cpf is not None and payload.cpf != user.cpf:
+        existing_cpf = (
+            db.query(User)
+            .filter(
+                User.cpf == payload.cpf,
+                User.id_usuario != user_id,
+            )
+            .first()
+        )
+        if existing_cpf:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="CPF já em uso",
+            )
+        user.cpf = payload.cpf
+
+    if payload.tipo_usuario is not None:
+        user.tipo_usuario = payload.tipo_usuario
+    if payload.nome is not None:
+        user.nome = payload.nome
+    if payload.url_foto_usuario is not None:
+        user.url_foto_usuario = payload.url_foto_usuario
+
+    db.commit()
+    db.refresh(user)
+
+    return user
