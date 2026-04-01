@@ -19,9 +19,44 @@ class Enterprise(Base):
     hora_abrir: Mapped[time] = mapped_column(Time, nullable=True)
     hora_fechar: Mapped[time] = mapped_column(Time, nullable=True)
     telefone: Mapped[str] = mapped_column(String(20), nullable=True)
-    usuario_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True),ForeignKey("usuarios.id_usuario"),nullable=False,unique=True)
-    usuarios = relationship("User",back_populates="empresa",passive_deletes=True,)
-    reservas = relationship("Reservation",back_populates="empresa",cascade="all, delete-orphan", passive_deletes=True,)
-    fotos = relationship("Photo",back_populates="empresa",cascade="all, delete-orphan",passive_deletes=True,)
-    avaliacoes = relationship("Assessment",back_populates="empresa",cascade="all, delete-orphan",passive_deletes=True,)
-    cardapios = relationship("Menu",back_populates="empresa",cascade="all, delete-orphan",passive_deletes=True,)
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    usuario = relationship(
+        "User",
+        back_populates="empresa",
+        foreign_keys=[usuario_id],
+    )
+
+    reservas = relationship(
+        "Reservation",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    fotos = relationship(
+        "Photo",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    avaliacoes = relationship(
+        "Assessment",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    cardapios = relationship(
+        "Menu",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
