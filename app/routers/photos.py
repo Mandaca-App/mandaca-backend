@@ -92,7 +92,7 @@ async def create_photos( files: Annotated[list[UploadFile], File()],empresa_id: 
             file_content = await file.read()
 
             supabase.storage.from_("mandaca-bucket").upload(
-                file=file_content,  # ✅ passa bytes
+                file=file_content,
                 path=storage_path,
                 file_options={
                     "content-type": file.content_type,
