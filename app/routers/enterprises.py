@@ -55,6 +55,42 @@ class EnterprisePercentageResponse(BaseModel):
     campos_preenchidos: list[str]
     campos_faltando: list[str]
 
+class PhotoOverviewResponse(BaseModel):
+    url_foto_empresa: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class EnterpriseOverviewResponse(BaseModel):
+    id_empresa: UUID
+    endereco: Optional[str] = None
+    historia: Optional[str] = None
+    fotos: list[PhotoOverviewResponse]
+
+@router.get("/overview", response_model=EnterpriseOverviewResponse)
+def get_enterprise_overview(
+    enterprise_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """Retorna endereco, historia e todas as fotos de uma empresa."""
+    enterprise = db.get(Enterprise, enterprise_id)
+    if not enterprise:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada",
+        )
+
+    return EnterpriseOverviewResponse(
+        id_empresa=enterprise.id_empresa,
+        endereco=enterprise.endereco,
+        historia=enterprise.historia,
+        fotos=[
+            PhotoOverviewResponse(
+                url_foto_empresa=photo.url_foto_empresa,
+            )
+            for photo in enterprise.fotos
+        ],
+    )
 
 @router.get("/", response_model=list[EnterpriseResponse])
 def list_enterprises(db: Session = Depends(get_db)):
