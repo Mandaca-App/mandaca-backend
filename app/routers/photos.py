@@ -125,35 +125,6 @@ async def create_photos( files: Annotated[list[UploadFile], File()],empresa_id: 
     return photos_created
 
 
-@router.put("/{photo_id}", response_model=PhotoResponse)
-def update_photo(photo_id: UUID, payload: PhotoUpdate, db: Session = Depends(get_db)):
-    """Endpoint que atualiza os dados de uma foto específica informada pelo ID."""
-    photo = db.get(Photo, photo_id)
-    if not photo:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Foto não encontrada",
-        )
-
-    if payload.empresa_id is not None and payload.empresa_id != photo.empresa_id:
-        enterprise = db.get(Enterprise, payload.empresa_id)
-        if not enterprise:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Empresa vinculada não encontrada",
-            )
-
-        photo.empresa_id = payload.empresa_id
-
-    if payload.url_foto_empresa is not None:
-        photo.url_foto_empresa = payload.url_foto_empresa
-
-    db.commit()
-    db.refresh(photo)
-
-    return photo
-
-
 @router.delete("/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_photo(photo_id: UUID, db: Session = Depends(get_db)):
     """Endpoint que remove uma foto específica informada pelo ID."""
