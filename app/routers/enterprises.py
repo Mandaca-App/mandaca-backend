@@ -24,6 +24,16 @@ class EnterpriseCreate(BaseModel):
     telefone: Optional[str] = None
     usuario_id: UUID
 
+class EnterpriseUpdate(BaseModel):
+    nome: Optional[str] = None
+    especialidade: Optional[str] = None
+    endereco: Optional[str] = None
+    historia: Optional[str] = None
+    hora_abrir: Optional[time] = None
+    hora_fechar: Optional[time] = None
+    telefone: Optional[str] = None
+    usuario_id: Optional[UUID] = None
+
 
 class EnterpriseResponse(BaseModel):
     id_empresa: UUID
@@ -48,11 +58,13 @@ class EnterprisePercentageResponse(BaseModel):
 
 @router.get("/", response_model=list[EnterpriseResponse])
 def list_enterprises(db: Session = Depends(get_db)):
+    """Endpoint que retorna uma lista de todos os objetos da entidade empresa no formato 'EnterpriseResponse' """
     return db.query(Enterprise).all()
 
 
 @router.get("/{enterprise_id}", response_model=EnterpriseResponse)
 def get_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)):
+    """Endpoint que retorna um objeto de uma empresa específica pelo ID no formato 'EnterpriseResponse'. """
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(
@@ -64,6 +76,7 @@ def get_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=EnterpriseResponse, status_code=status.HTTP_201_CREATED)
 def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
+    """Endpoint que cria uma nova empresa a partir dos dados enviados no corpo da requisição. """
     existing_name = db.query(Enterprise).filter(Enterprise.nome == payload.nome).first()
     if existing_name:
         raise HTTPException(
@@ -101,8 +114,9 @@ def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
 
     return enterprise
 
-@router.get("/{enterprise_id}/percentage", response_model=EnterprisePercentageResponse)
+@router.get("/percentage/{enterprise_id}", response_model=EnterprisePercentageResponse)
 def enterprise_percentage(enterprise_id: UUID, db: Session = Depends(get_db)):
+    """Endpoint que retorna a porcentagem de preenchimento do perfil da empresa informada pelo ID."""
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(
@@ -134,3 +148,63 @@ def enterprise_percentage(enterprise_id: UUID, db: Session = Depends(get_db)):
         campos_preenchidos=preenchidos,
         campos_faltando=faltando,
     )
+
+@router.put("/{enterprise_id}", response_model=EnterpriseResponse)
+def update_enterprise(enterprise_id: UUID,payload: EnterpriseUpdate,db: Session = Depends(get_db),):
+    """Endpoint que atualiza os dados de uma empresa específica informada pelo ID."""
+    enterprise = db.get(Enterprise, enterprise_id)
+    if not enterprise:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada",
+        )
+
+    if payload.nome is not None and payload.nome != enterprise.nome:
+        existing_name = (
+            db.query(Enterprise)
+            .filter(
+                Enterprise.nome == payload.nome,
+                Enterprise.id_empresa != enterprise_id,
+            )
+            .first()
+        )
+        if existing_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Já existe uma empresa com esse nome",
+            )
+        enterprise.nome = payload.nome
+
+    if payload.usuario_id is not None and payload.usuario_id != enterprise.usuario_id:
+        user = db.get(User, payload.usuario_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuário vinculado não encontrado",
+            )
+
+        if user.empresa is not None and user.empresa.id_empresa != enterprise.id_empresa:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Este usuário já está vinculado a outra empresa",
+            )
+
+        enterprise.usuario_id = payload.usuario_id
+
+    if payload.especialidade is not None:
+        enterprise.especialidade = payload.especialidade
+    if payload.endereco is not None:
+        enterprise.endereco = payload.endereco
+    if payload.historia is not None:
+        enterprise.historia = payload.historia
+    if payload.hora_abrir is not None:
+        enterprise.hora_abrir = payload.hora_abrir
+    if payload.hora_fechar is not None:
+        enterprise.hora_fechar = payload.hora_fechar
+    if payload.telefone is not None:
+        enterprise.telefone = payload.telefone
+
+    db.commit()
+    db.refresh(enterprise)
+
+    return enterprise
