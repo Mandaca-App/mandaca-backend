@@ -8,3 +8,5 @@ pydantic-settings
 python-dotenv
 pytest
 httpx
+supabase
+python-multipart
