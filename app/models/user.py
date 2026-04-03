@@ -22,3 +22,4 @@ class User(Base):
     empresa = relationship("Enterprise", back_populates="usuario",uselist=False,)
     reservas = relationship("Reservation",back_populates="usuario",cascade="all, delete-orphan",passive_deletes=True,)
     avaliacoes = relationship("Assessment",back_populates="usuario",cascade="all, delete-orphan",passive_deletes=True,)
+    notificacoes = relationship("Notification", back_populates="usuario", cascade="all, delete-orphan", passive_deletes=True)
