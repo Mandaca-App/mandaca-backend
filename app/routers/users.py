@@ -1,12 +1,12 @@
-from uuid import UUID
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
-from app.models.user import User, TipoUsuario
+from app.models.user import TipoUsuario, User
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -49,7 +49,7 @@ class UserResponse(BaseModel):
 
 @router.get("/", response_model=list[UserResponse])
 def list_users(db: Session = Depends(get_db)):
-    """Endpoint que retorna uma lista de todos os objetos da entidade usuario no formato 'UserResponse'"""
+    """Retorna uma lista de todos os usuários no formato UserResponse."""
     users = db.query(User).all()
     return [UserResponse.from_user(u) for u in users]
 

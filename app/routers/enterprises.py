@@ -1,6 +1,6 @@
-from uuid import UUID
-from typing import Optional
 from datetime import time
+from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -59,13 +59,13 @@ class EnterprisePercentageResponse(BaseModel):
 
 @router.get("/", response_model=list[EnterpriseResponse])
 def list_enterprises(db: Session = Depends(get_db)):
-    """Endpoint que retorna uma lista de todos os objetos da entidade empresa no formato 'EnterpriseResponse'"""
+    """Retorna uma lista de todas as empresas no formato EnterpriseResponse."""
     return db.query(Enterprise).all()
 
 
 @router.get("/{enterprise_id}", response_model=EnterpriseResponse)
 def get_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)):
-    """Endpoint que retorna um objeto de uma empresa específica pelo ID no formato 'EnterpriseResponse'."""
+    """Retorna uma empresa específica pelo ID no formato EnterpriseResponse."""
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(
@@ -118,7 +118,7 @@ def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
 
 @router.get("/percentage/{enterprise_id}", response_model=EnterprisePercentageResponse)
 def enterprise_percentage(enterprise_id: UUID, db: Session = Depends(get_db)):
-    """Endpoint que retorna a porcentagem de preenchimento do perfil da empresa informada pelo ID."""
+    """Retorna a porcentagem de preenchimento do perfil da empresa pelo ID."""
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(
