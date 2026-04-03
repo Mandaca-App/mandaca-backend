@@ -38,8 +38,13 @@ jobs:
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
           ruff check . > ruff_output.txt 2>&1 || RUFF_FAILED=1
-          cat ruff_output.txt | reviewdog -f=pep8 -name="Ruff" \
-            -reporter=$REPORTER -filter-mode=nofilter || true
+          echo "=== Ruff output ==="
+          cat ruff_output.txt
+          echo "=== Reviewdog ==="
+          cat ruff_output.txt | reviewdog \
+            -efm="%f:%l:%c: %m" -name="Ruff" \
+            -reporter=$REPORTER -filter-mode=nofilter || REVIEWDOG_FAILED=1
+          [ -z "$REVIEWDOG_FAILED" ] || echo "⚠️ reviewdog falhou ao postar comentários"
           [ -z "$RUFF_FAILED" ] || { echo "❌ Ruff encontrou violações."; exit 1; }
 
       - name: Formatação com Black (comentários inline no PR)
@@ -49,8 +54,13 @@ jobs:
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
           black . --check --diff > black_output.txt 2>&1 || BLACK_FAILED=1
-          cat black_output.txt | reviewdog -f=diff -f.diff.strip=1 -name="Black" \
-            -reporter=$REPORTER -filter-mode=nofilter || true
+          echo "=== Black output ==="
+          cat black_output.txt
+          echo "=== Reviewdog ==="
+          cat black_output.txt | reviewdog \
+            -f=diff -f.diff.strip=1 -name="Black" \
+            -reporter=$REPORTER -filter-mode=nofilter || REVIEWDOG_FAILED=1
+          [ -z "$REVIEWDOG_FAILED" ] || echo "⚠️ reviewdog falhou ao postar comentários"
           [ -z "$BLACK_FAILED" ] || { echo "❌ Black encontrou problemas de formatação."; exit 1; }
 
   commit-check:
