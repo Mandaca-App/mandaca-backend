@@ -80,9 +80,7 @@ async def create_user(
 
         try:
             file_ext = (
-                foto.filename.split(".")[-1]
-                if foto.filename and "." in foto.filename
-                else "jpg"
+                foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
             )
             storage_path = f"usuarios/{uuid4()}.{file_ext}"
 
@@ -97,9 +95,7 @@ async def create_user(
                 },
             )
 
-            url_foto_usuario = supabase.storage.from_("mandaca-bucket").get_public_url(
-                storage_path
-            )
+            url_foto_usuario = supabase.storage.from_("mandaca-bucket").get_public_url(storage_path)
 
         except Exception:
             url_foto_usuario = None
@@ -165,9 +161,7 @@ async def update_user(
 
         try:
             file_ext = (
-                foto.filename.split(".")[-1]
-                if foto.filename and "." in foto.filename
-                else "jpg"
+                foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
             )
             storage_path = f"usuarios/{uuid4()}.{file_ext}"
 

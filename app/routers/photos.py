@@ -34,7 +34,7 @@ def list_photos(db: Session = Depends(get_db)):
 
 @router.get("/{photo_id}", response_model=PhotoResponse)
 def get_photo(photo_id: UUID, db: Session = Depends(get_db)):
-    """Endpoint que retorna um objeto de uma foto específica pelo ID no formato 'PhotoResponse'. """
+    """Endpoint que retorna um objeto de uma foto específica pelo ID no formato 'PhotoResponse'."""
     photo = db.get(Photo, photo_id)
     if not photo:
         raise HTTPException(
@@ -46,7 +46,7 @@ def get_photo(photo_id: UUID, db: Session = Depends(get_db)):
 
 @router.get("/enterprise/{enterprise_id}", response_model=list[PhotoResponse])
 def list_photos_by_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)):
-    """Endpoint que retorna todas as fotos de uma empresa específica pelo ID. """
+    """Endpoint que retorna todas as fotos de uma empresa específica pelo ID."""
     enterprise = db.get(Enterprise, enterprise_id)
     if not enterprise:
         raise HTTPException(
@@ -64,7 +64,7 @@ async def create_photos(
     db: Session = Depends(get_db),
 ):
     """Cria novas fotos vinculadas a uma empresa a partir dos arquivos enviados."""
-    
+
     enterprise = db.get(Enterprise, empresa_id)
     if not enterprise:
         raise HTTPException(
@@ -77,7 +77,7 @@ async def create_photos(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Nenhum arquivo foi enviado",
         )
-    
+
     photos_created = []
 
     for file in files:

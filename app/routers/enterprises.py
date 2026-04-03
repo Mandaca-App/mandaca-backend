@@ -56,6 +56,7 @@ class EnterprisePercentageResponse(BaseModel):
     campos_preenchidos: list[str]
     campos_faltando: list[str]
 
+
 class PhotoOverviewResponse(BaseModel):
     url_foto_empresa: Optional[str] = None
 
@@ -67,6 +68,7 @@ class EnterpriseOverviewResponse(BaseModel):
     endereco: Optional[str] = None
     historia: Optional[str] = None
     fotos: list[PhotoOverviewResponse]
+
 
 @router.get("/overview", response_model=EnterpriseOverviewResponse)
 def get_enterprise_overview(
@@ -92,6 +94,7 @@ def get_enterprise_overview(
             for photo in enterprise.fotos
         ],
     )
+
 
 @router.get("/", response_model=list[EnterpriseResponse])
 def list_enterprises(db: Session = Depends(get_db)):
