@@ -37,7 +37,7 @@ jobs:
         run: |
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
-          ruff check . > ruff_output.txt 2>&1 || RUFF_FAILED=1
+          ruff check . --output-format=concise > ruff_output.txt 2>&1 || RUFF_FAILED=1
           echo "=== Ruff output ==="
           cat ruff_output.txt
           echo "=== Reviewdog ==="
