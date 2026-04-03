@@ -1,7 +1,7 @@
+from typing import Annotated, Optional
 from uuid import UUID, uuid4
-from typing import Optional
-from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -9,8 +9,6 @@ from app.core.session import get_db
 from app.core.supabase_client import supabase
 from app.models.enterprise import Enterprise
 from app.models.photo import Photo
-
-
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 
@@ -30,7 +28,7 @@ class PhotoResponse(BaseModel):
 
 @router.get("/", response_model=list[PhotoResponse])
 def list_photos(db: Session = Depends(get_db)):
-    """Endpoint que retorna uma lista de todos os objetos da entidade foto no formato 'PhotoResponse' """
+    """Retorna uma lista de todos os objetos da entidade foto no formato 'PhotoResponse'."""
     return db.query(Photo).all()
 
 
@@ -60,8 +58,12 @@ def list_photos_by_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)
 
 
 @router.post("/", response_model=list[PhotoResponse], status_code=status.HTTP_201_CREATED)
-async def create_photos( files: Annotated[list[UploadFile], File()],empresa_id: UUID = Form(...),db: Session = Depends(get_db),):
-    """Endpoint que cria novas fotos vinculadas a uma empresa a partir dos arquivos enviados no corpo da requisição."""
+async def create_photos(
+    files: Annotated[list[UploadFile], File()],
+    empresa_id: UUID = Form(...),
+    db: Session = Depends(get_db),
+):
+    """Cria novas fotos vinculadas a uma empresa a partir dos arquivos enviados."""
     
     enterprise = db.get(Enterprise, empresa_id)
     if not enterprise:
