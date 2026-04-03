@@ -37,9 +37,10 @@ jobs:
         run: |
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
-          ruff check . | \
-            reviewdog -f=pep8 -name="Ruff" -reporter=$REPORTER \
-              -filter-mode=nofilter -fail-on-error
+          ruff check . > ruff_output.txt 2>&1 || RUFF_FAILED=1
+          cat ruff_output.txt | reviewdog -f=pep8 -name="Ruff" \
+            -reporter=$REPORTER -filter-mode=nofilter || true
+          [ -z "$RUFF_FAILED" ] || { echo "❌ Ruff encontrou violações."; exit 1; }
 
       - name: Formatação com Black (comentários inline no PR)
         env:
@@ -47,9 +48,10 @@ jobs:
         run: |
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
-          black . --check --diff | \
-            reviewdog -f=diff -f.diff.strip=1 -name="Black" -reporter=$REPORTER \
-              -filter-mode=nofilter -fail-on-error
+          black . --check --diff > black_output.txt 2>&1 || BLACK_FAILED=1
+          cat black_output.txt | reviewdog -f=diff -f.diff.strip=1 -name="Black" \
+            -reporter=$REPORTER -filter-mode=nofilter || true
+          [ -z "$BLACK_FAILED" ] || { echo "❌ Black encontrou problemas de formatação."; exit 1; }
 
   commit-check:
     name: CI - Commit Check SCRUM-ID
