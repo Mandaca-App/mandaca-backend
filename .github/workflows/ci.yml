@@ -42,7 +42,7 @@ jobs:
 
       - name: Verificar padrão SCRUM-ID nos commits do PR
         run: |
-          git log origin/${{ github.base_ref }}..HEAD --format="%s" | while read msg; do
+          git log origin/${{ github.base_ref }}..HEAD --no-merges --format="%s" | while read msg; do
             if ! echo "$msg" | grep -qE '^SCRUM-[0-9]+:'; then
               echo "❌ Commit fora do padrão: \"$msg\""
               echo "   Esperado: SCRUM-<ID>: <mensagem>"
