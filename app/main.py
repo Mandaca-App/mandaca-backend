@@ -1,7 +1,8 @@
 from fastapi import FastAPI
+
 import app.models
-from app.routers import users, enterprises
 from app.core.config import settings
+from app.routers import enterprises, users
 
 app = FastAPI(title="Meu Projeto", version="0.1.0")
 
