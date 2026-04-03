@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install black ruff
+
+      # --- Quality Gate 1: Lint e Formatação ---
+      - name: Verificar formatação com Black
+        run: black . --check --line-length 100
+
+      - name: Verificar lint com Ruff
+        run: ruff check . --line-length 100
+
+      # --- Quality Gate 2: Testes e Cobertura ---
+      - name: Rodar testes com cobertura
+        run: |
+          pytest --cov=app --cov-report=xml:coverage.xml \
+                 --cov-report=term-missing --cov-fail-under=70
+
+      # --- Comentário de Cobertura no PR ---
+      - name: Publicar resumo de cobertura no PR
+        uses: MishaKav/pytest-coverage-comment@main
+        if: github.event_name == 'pull_request'
+        with:
+          pytest-xml-coverage-path: coverage.xml
