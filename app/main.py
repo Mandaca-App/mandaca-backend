@@ -3,10 +3,7 @@ import app.models
 from app.routers import users, enterprises
 from app.core.config import settings
 
-app = FastAPI(
-    title="Meu Projeto",
-    version="0.1.0"
-)
+app = FastAPI(title="Meu Projeto", version="0.1.0")
 
 app.include_router(users.router)
 app.include_router(enterprises.router)

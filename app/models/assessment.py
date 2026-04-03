@@ -14,18 +14,33 @@ class TipoAvaliacao(str, enum.Enum):
     NEUTRA = "neutra"
     SUGESTAO = "sugestao"
     DUVIDA = "duvida"
-    
 
 
 class Assessment(Base):
     __tablename__ = "avaliacoes"
 
-    id_avaliacao: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_avaliacao: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     texto: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    tipo_avaliacao: Mapped[TipoAvaliacao] = mapped_column(Enum(TipoAvaliacao, name="tipo_avaliacao_enum"), nullable=False, default=TipoAvaliacao.NEUTRA)
+    tipo_avaliacao: Mapped[TipoAvaliacao] = mapped_column(
+        Enum(TipoAvaliacao, name="tipo_avaliacao_enum"),
+        nullable=False,
+        default=TipoAvaliacao.NEUTRA,
+    )
 
-    usuario_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True),ForeignKey("usuarios.id_usuario", ondelete="CASCADE"),nullable=False,index=True,)
-    empresa_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True),ForeignKey("empresas.id_empresa", ondelete="CASCADE"),nullable=False,index=True,)
+    usuario_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("usuarios.id_usuario", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    empresa_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("empresas.id_empresa", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     usuario = relationship("User", back_populates="avaliacoes")
     empresa = relationship("Enterprise", back_populates="avaliacoes")
