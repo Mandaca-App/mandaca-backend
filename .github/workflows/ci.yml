@@ -10,6 +10,9 @@ jobs:
   checkstyle:
     name: CI - Checkstyle
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout do código
@@ -23,11 +26,28 @@ jobs:
       - name: Instalar ferramentas de lint
         run: pip install black ruff
 
-      - name: Verificar formatação com Black
-        run: black . --check
+      - name: Configurar reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
 
-      - name: Verificar lint com Ruff
-        run: ruff check .
+      - name: Lint com Ruff (comentários inline no PR)
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
+            && echo "github-pr-review" || echo "github-check")
+          ruff check . --output-format=github | \
+            reviewdog -f=github-actions -name="Ruff" -reporter=$REPORTER -fail-on-error
+
+      - name: Formatação com Black (comentários inline no PR)
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
+            && echo "github-pr-review" || echo "github-check")
+          black . --check --diff | \
+            reviewdog -f=diff -f.diff.strip=1 -name="Black" -reporter=$REPORTER -fail-on-error
 
   commit-check:
     name: CI - Commit Check SCRUM-ID
