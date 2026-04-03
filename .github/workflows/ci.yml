@@ -37,8 +37,8 @@ jobs:
         run: |
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
-          ruff check . --output-format=github | \
-            reviewdog -f=github-actions -name="Ruff" -reporter=$REPORTER -fail-on-error
+          ruff check . | \
+            reviewdog -f=pep8 -name="Ruff" -reporter=$REPORTER -fail-on-error
 
       - name: Formatação com Black (comentários inline no PR)
         env:
