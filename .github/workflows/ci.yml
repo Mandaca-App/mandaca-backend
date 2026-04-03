@@ -6,12 +6,56 @@ on:
   pull_request:
     branches: [main, dev]
 
-permissions:
-  pull-requests: write
-
 jobs:
-  ci:
+  checkstyle:
+    name: CI - Checkstyle
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar ferramentas de lint
+        run: pip install black ruff
+
+      - name: Verificar formatação com Black
+        run: black . --check
+
+      - name: Verificar lint com Ruff
+        run: ruff check .
+
+  commit-check:
+    name: CI - Commit Check SCRUM-ID
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar padrão SCRUM-ID nos commits do PR
+        run: |
+          git log origin/${{ github.base_ref }}..HEAD --format="%s" | while read msg; do
+            if ! echo "$msg" | grep -qE '^SCRUM-[0-9]+:'; then
+              echo "❌ Commit fora do padrão: \"$msg\""
+              echo "   Esperado: SCRUM-<ID>: <mensagem>"
+              exit 1
+            fi
+          done
+          echo "✅ Todos os commits seguem o padrão SCRUM-ID."
+
+  test-coverage:
+    name: CI - Test Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Checkout do código
@@ -26,22 +70,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install black ruff
 
-      # --- Quality Gate 1: Lint e Formatação ---
-      - name: Verificar formatação com Black
-        run: black . --check --line-length 100
-
-      - name: Verificar lint com Ruff
-        run: ruff check . --line-length 100
-
-      # --- Quality Gate 2: Testes e Cobertura ---
       - name: Rodar testes com cobertura
         run: |
           pytest --cov=app --cov-report=xml:coverage.xml \
                  --cov-report=term-missing --cov-fail-under=70
 
-      # --- Comentário de Cobertura no PR ---
       - name: Publicar resumo de cobertura no PR
         uses: MishaKav/pytest-coverage-comment@main
         if: github.event_name == 'pull_request'
