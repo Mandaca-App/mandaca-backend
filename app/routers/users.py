@@ -1,28 +1,15 @@
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
+from app.core.supabase_client import supabase
 from app.models.user import TipoUsuario, User
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-
-class UserCreate(BaseModel):
-    tipo_usuario: Optional[TipoUsuario] = TipoUsuario.TURISTA
-    nome: str
-    cpf: str
-    url_foto_usuario: Optional[str] = None
-
-
-class UserUpdate(BaseModel):
-    tipo_usuario: Optional[TipoUsuario] = None
-    nome: Optional[str] = None
-    cpf: Optional[str] = None
-    url_foto_usuario: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -31,7 +18,7 @@ class UserResponse(BaseModel):
     nome: str
     cpf: str
     url_foto_usuario: Optional[str] = None
-    empresa_id: Optional[UUID] = None  # virá da property abaixo
+    empresa_id: Optional[UUID] = None
 
     model_config = {"from_attributes": True}
 
@@ -67,20 +54,61 @@ def get_user(user_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(payload: UserCreate, db: Session = Depends(get_db)):
-    """Endpoint que cria um novo usuario a partir dos dados enviados no corpo da requisição."""
-    existing = db.query(User).filter(User.cpf == payload.cpf).first()
+async def create_user(
+    tipo_usuario: TipoUsuario = Form(TipoUsuario.TURISTA),
+    nome: str = Form(...),
+    cpf: str = Form(...),
+    foto: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+):
+    """Cria um novo usuário. Se um arquivo de imagem for enviado, tenta salvá-lo no Supabase."""
+    existing = db.query(User).filter(User.cpf == cpf).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="CPF já cadastrado",
         )
 
+    url_foto_usuario = None
+
+    if foto is not None:
+        if not foto.content_type or not foto.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O arquivo enviado não é uma imagem válida",
+            )
+
+        try:
+            file_ext = (
+                foto.filename.split(".")[-1]
+                if foto.filename and "." in foto.filename
+                else "jpg"
+            )
+            storage_path = f"usuarios/{uuid4()}.{file_ext}"
+
+            file_content = await foto.read()
+
+            supabase.storage.from_("mandaca-bucket").upload(
+                file=file_content,
+                path=storage_path,
+                file_options={
+                    "content-type": foto.content_type,
+                    "upsert": "false",
+                },
+            )
+
+            url_foto_usuario = supabase.storage.from_("mandaca-bucket").get_public_url(
+                storage_path
+            )
+
+        except Exception:
+            url_foto_usuario = None
+
     user = User(
-        tipo_usuario=payload.tipo_usuario,
-        nome=payload.nome,
-        cpf=payload.cpf,
-        url_foto_usuario=payload.url_foto_usuario,
+        tipo_usuario=tipo_usuario,
+        nome=nome,
+        cpf=cpf,
+        url_foto_usuario=url_foto_usuario,
     )
 
     db.add(user)
@@ -90,12 +118,15 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(
+async def update_user(
     user_id: UUID,
-    payload: UserUpdate,
+    tipo_usuario: Optional[TipoUsuario] = Form(None),
+    nome: Optional[str] = Form(None),
+    cpf: Optional[str] = Form(None),
+    foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ):
-    """Endpoint que atualiza os dados de um usuário específico informando o ID."""
+    """Atualiza os dados de um usuário e, se uma imagem for enviada, tenta salvar no Supabase."""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(
@@ -103,11 +134,11 @@ def update_user(
             detail="Usuário não encontrado",
         )
 
-    if payload.cpf is not None and payload.cpf != user.cpf:
+    if cpf is not None and cpf != user.cpf:
         existing_cpf = (
             db.query(User)
             .filter(
-                User.cpf == payload.cpf,
+                User.cpf == cpf,
                 User.id_usuario != user_id,
             )
             .first()
@@ -117,19 +148,51 @@ def update_user(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="CPF já em uso",
             )
-        user.cpf = payload.cpf
+        user.cpf = cpf
 
-    if payload.tipo_usuario is not None:
-        user.tipo_usuario = payload.tipo_usuario
-    if payload.nome is not None:
-        user.nome = payload.nome
-    if payload.url_foto_usuario is not None:
-        user.url_foto_usuario = payload.url_foto_usuario
+    if tipo_usuario is not None:
+        user.tipo_usuario = tipo_usuario
+
+    if nome is not None:
+        user.nome = nome
+
+    if foto is not None:
+        if not foto.content_type or not foto.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O arquivo enviado não é uma imagem válida",
+            )
+
+        try:
+            file_ext = (
+                foto.filename.split(".")[-1]
+                if foto.filename and "." in foto.filename
+                else "jpg"
+            )
+            storage_path = f"usuarios/{uuid4()}.{file_ext}"
+
+            file_content = await foto.read()
+
+            supabase.storage.from_("mandaca-bucket").upload(
+                file=file_content,
+                path=storage_path,
+                file_options={
+                    "content-type": foto.content_type,
+                    "upsert": "false",
+                },
+            )
+
+            user.url_foto_usuario = supabase.storage.from_("mandaca-bucket").get_public_url(
+                storage_path
+            )
+
+        except Exception:
+            pass
 
     db.commit()
     db.refresh(user)
 
-    return user
+    return UserResponse.from_user(user)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

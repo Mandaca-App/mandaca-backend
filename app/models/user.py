@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Enum, String
+from sqlalchemy import Enum, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,7 +28,7 @@ class User(Base):
     )
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     cpf: Mapped[str] = mapped_column(String(11), nullable=False, unique=True)
-    url_foto_usuario: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    url_foto_usuario: Mapped[str | None] = mapped_column(Text, nullable=True)
     empresa = relationship(
         "Enterprise",
         back_populates="usuario",
