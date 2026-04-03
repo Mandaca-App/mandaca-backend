@@ -38,7 +38,8 @@ jobs:
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
           ruff check . | \
-            reviewdog -f=pep8 -name="Ruff" -reporter=$REPORTER -fail-on-error
+            reviewdog -f=pep8 -name="Ruff" -reporter=$REPORTER \
+              -filter-mode=nofilter -fail-on-error
 
       - name: Formatação com Black (comentários inline no PR)
         env:
@@ -47,7 +48,8 @@ jobs:
           REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
             && echo "github-pr-review" || echo "github-check")
           black . --check --diff | \
-            reviewdog -f=diff -f.diff.strip=1 -name="Black" -reporter=$REPORTER -fail-on-error
+            reviewdog -f=diff -f.diff.strip=1 -name="Black" -reporter=$REPORTER \
+              -filter-mode=nofilter -fail-on-error
 
   commit-check:
     name: CI - Commit Check SCRUM-ID
