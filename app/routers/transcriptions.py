@@ -44,9 +44,7 @@ class AudioTranscriptionResponse(BaseModel):
                 telefone=record.telefone_extraido,
             ),
             sucesso=bool(
-                record.nome_extraido
-                or record.especialidade_extraida
-                or record.endereco_extraido
+                record.nome_extraido or record.especialidade_extraida or record.endereco_extraido
             ),
         )
 
