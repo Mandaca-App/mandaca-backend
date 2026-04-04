@@ -1,6 +1,7 @@
 ﻿import uuid
 
 from app.models.notification import Notification
+from app.core.session import get_db
 
 
 def test_listar_notificacoes_usuario(client, db):
@@ -101,3 +102,19 @@ def test_marcar_todas_como_lidas_sem_notificacoes(client, db):
 
     assert response.status_code == 200
     assert "0 notificações marcadas como lidas" in response.json()["message"]
+
+
+def test_health_check(client, db):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_get_db_yields_session():
+    gen = get_db()
+    db = next(gen)
+    assert db is not None
+    try:
+        next(gen)
+    except StopIteration:
+        pass
