@@ -48,11 +48,13 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+        if_not_exists=True,
     )
     op.create_index(
         "ix_transcricoes_audio_usuario_id",
         "transcricoes_audio",
         ["usuario_id"],
+        if_not_exists=True,
     )
 
 
