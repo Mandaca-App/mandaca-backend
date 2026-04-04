@@ -13,3 +13,6 @@ exclude = ["alembic", "venv"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
