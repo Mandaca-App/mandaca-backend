@@ -7,7 +7,7 @@ os.environ["APP_ENV"] = "testing"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, StaticPool
+from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.session import Base, get_db

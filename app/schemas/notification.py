@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.models.notification import Notification
 
+
 class NotificationResponse(BaseModel):
     id: UUID
     usuario_id: UUID
