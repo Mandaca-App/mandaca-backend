@@ -118,3 +118,8 @@ def test_get_db_yields_session():
         next(gen)
     except StopIteration:
         pass
+
+
+def test_listar_usuarios(client, db):
+    response = client.get("/users/")
+    assert response.status_code == 200
