@@ -91,7 +91,7 @@ def test_marcar_todas_como_lidas(client, db):
     response = client.patch(f"/notifications/read-all?usuario_id={user_id}")
 
     assert response.status_code == 200
-    assert "2 notificacoes marcadas como lidas" in response.json()["message"]
+    assert "2 notificações marcadas como lidas" in response.json()["message"]
 
 
 def test_marcar_todas_como_lidas_sem_notificacoes(client, db):
@@ -100,4 +100,4 @@ def test_marcar_todas_como_lidas_sem_notificacoes(client, db):
     response = client.patch(f"/notifications/read-all?usuario_id={user_id}")
 
     assert response.status_code == 200
-    assert "0 notificacoes marcadas como lidas" in response.json()["message"]
+    assert "0 notificações marcadas como lidas" in response.json()["message"]
