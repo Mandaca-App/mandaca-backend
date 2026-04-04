@@ -1,7 +1,7 @@
 ﻿import uuid
 
-from app.models.notification import Notification
 from app.core.session import get_db
+from app.models.notification import Notification
 
 
 def test_listar_notificacoes_usuario(client, db):
