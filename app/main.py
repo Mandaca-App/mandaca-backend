@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 import app.models
 from app.core.config import settings
-from app.routers import enterprises, photos, users, notifications
+from app.routers import enterprises, notifications, photos, users
 
 app = FastAPI(title="Meu Projeto", version="0.1.0")
 
