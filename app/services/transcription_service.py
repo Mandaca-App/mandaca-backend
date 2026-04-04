@@ -11,8 +11,7 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.supabase_client import supabase
-from app.models.audio_transcription import AudioTranscription
+from app.models.enterprise import Enterprise
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +66,8 @@ async def process_audio_registration(
     file: UploadFile,
     usuario_id: uuid.UUID,
     db: Session,
-) -> AudioTranscription:
-    """Processa um arquivo de áudio: valida, armazena, transcreve e extrai campos."""
+) -> Enterprise:
+    """Transcreve áudio, extrai campos e cria a empresa do usuário em empresas."""
     if file.content_type not in ALLOWED_AUDIO_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -76,7 +75,6 @@ async def process_audio_registration(
             "Use mp3, wav, webm, ogg ou m4a.",
         )
 
-    # Fast-path: rejeita antes de ler em RAM quando Content-Length está disponível
     if file.size is not None and file.size > MAX_AUDIO_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
@@ -85,7 +83,6 @@ async def process_audio_registration(
 
     file_content = await file.read()
 
-    # Safety-check para clientes que não enviam Content-Length
     if len(file_content) > MAX_AUDIO_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
@@ -93,48 +90,32 @@ async def process_audio_registration(
         )
 
     client = AsyncGroq(api_key=settings.groq_api_key)
-
-    audio_url = _upload_audio_to_storage(file_content, file, usuario_id)
     texto_bruto = await _transcribe_audio(file_content, file, client)
     campos = await _extract_fields(texto_bruto, client)
 
-    record = AudioTranscription(
-        usuario_id=usuario_id,
-        url_audio=audio_url,
-        texto_bruto=texto_bruto,
-        nome_extraido=campos.get("nome"),
-        especialidade_extraida=campos.get("especialidade"),
-        endereco_extraido=campos.get("endereco"),
-        historia_extraida=campos.get("historia"),
-        telefone_extraido=campos.get("telefone"),
-    )
-    db.add(record)
+    enterprise = db.query(Enterprise).filter(Enterprise.usuario_id == usuario_id).first()
+
+    if enterprise:
+        enterprise.nome = campos.get("nome") or enterprise.nome
+        enterprise.especialidade = campos.get("especialidade") or enterprise.especialidade
+        enterprise.endereco = campos.get("endereco") or enterprise.endereco
+        enterprise.historia = campos.get("historia") or enterprise.historia
+        enterprise.telefone = campos.get("telefone") or enterprise.telefone
+    else:
+        enterprise = Enterprise(
+            id_empresa=uuid.uuid4(),
+            usuario_id=usuario_id,
+            nome=campos.get("nome") or "Empresa sem nome",
+            especialidade=campos.get("especialidade"),
+            endereco=campos.get("endereco"),
+            historia=campos.get("historia"),
+            telefone=campos.get("telefone"),
+        )
+        db.add(enterprise)
+
     db.commit()
-    db.refresh(record)
-    return record
-
-
-def _upload_audio_to_storage(
-    file_content: bytes,
-    file: UploadFile,
-    usuario_id: uuid.UUID,
-) -> str | None:
-    """Faz upload do áudio para o Supabase Storage e retorna a URL pública."""
-    file_ext = _get_extension(file.filename, file.content_type)
-    storage_path = f"audios/{usuario_id}/{uuid.uuid4()}.{file_ext}"
-
-    try:
-        supabase.storage.from_("mandaca-bucket").upload(
-            file=file_content,
-            path=storage_path,
-            file_options={"content-type": file.content_type, "upsert": "false"},
-        )
-        return supabase.storage.from_("mandaca-bucket").get_public_url(storage_path)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Falha ao armazenar o áudio: {exc}",
-        )
+    db.refresh(enterprise)
+    return enterprise
 
 
 async def _transcribe_audio(
@@ -193,11 +174,9 @@ async def _extract_fields(texto_bruto: str, client: AsyncGroq) -> dict[str, Any]
         raw = json.loads(response.choices[0].message.content)
         return _ExtractedFields.model_validate(raw).model_dump()
     except ValidationError as exc:
-        # LLM retornou JSON com tipos inválidos — falha não-fatal
         logger.warning("LLM output failed Pydantic validation: %s", exc)
         return {}
     except Exception as exc:
-        # Falha na extração é não-fatal: o texto bruto já foi salvo
         logger.warning("Field extraction failed, persisting raw text only: %s", exc)
         return {}
 
