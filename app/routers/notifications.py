@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
-from app.schemas.notification import MessageResponse, NotificationResponse, UnreadCountResponse
+from app.schemas.notification import (
+    MessageResponse,
+    NotificationResponse,
+    UnreadCountResponse,
+)
 from app.services import notification as notification_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
