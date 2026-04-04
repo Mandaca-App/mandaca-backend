@@ -1,11 +1,15 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.session import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class AudioTranscription(Base):
@@ -32,4 +36,4 @@ class AudioTranscription(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    usuario = relationship("User", foreign_keys=[usuario_id])
+    usuario: Mapped["User"] = relationship("User", foreign_keys=[usuario_id])

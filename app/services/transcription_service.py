@@ -1,15 +1,20 @@
 import io
 import json
+import logging
 import uuid
 from typing import Any
 
+import groq as groq_sdk
 from fastapi import HTTPException, UploadFile, status
 from groq import AsyncGroq
+from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.supabase_client import supabase
 from app.models.audio_transcription import AudioTranscription
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_AUDIO_TYPES = {
     "audio/mpeg",
@@ -45,6 +50,18 @@ Campos:
 - telefone: número de telefone (string ou null, somente dígitos, espaços e hífens)
 """
 
+_SIZE_EXCEEDED_MSG = "O arquivo de áudio excede o limite de 25 MB."
+
+
+class _ExtractedFields(BaseModel):
+    """Schema interno para validar a saída do LLM antes de persistir."""
+
+    nome: str | None = None
+    especialidade: str | None = None
+    endereco: str | None = None
+    historia: str | None = None
+    telefone: str | None = None
+
 
 async def process_audio_registration(
     file: UploadFile,
@@ -56,20 +73,30 @@ async def process_audio_registration(
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=f"Formato de áudio não suportado: {file.content_type}. "
-            f"Use mp3, wav, webm, ogg ou m4a.",
+            "Use mp3, wav, webm, ogg ou m4a.",
+        )
+
+    # Fast-path: rejeita antes de ler em RAM quando Content-Length está disponível
+    if file.size is not None and file.size > MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=_SIZE_EXCEEDED_MSG,
         )
 
     file_content = await file.read()
 
+    # Safety-check para clientes que não enviam Content-Length
     if len(file_content) > MAX_AUDIO_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="O arquivo de áudio excede o limite de 25 MB.",
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=_SIZE_EXCEEDED_MSG,
         )
 
+    client = AsyncGroq(api_key=settings.groq_api_key)
+
     audio_url = _upload_audio_to_storage(file_content, file, usuario_id)
-    texto_bruto = await _transcribe_audio(file_content, file)
-    campos = await _extract_fields(texto_bruto)
+    texto_bruto = await _transcribe_audio(file_content, file, client)
+    campos = await _extract_fields(texto_bruto, client)
 
     record = AudioTranscription(
         usuario_id=usuario_id,
@@ -110,9 +137,12 @@ def _upload_audio_to_storage(
         )
 
 
-async def _transcribe_audio(file_content: bytes, file: UploadFile) -> str:
+async def _transcribe_audio(
+    file_content: bytes,
+    file: UploadFile,
+    client: AsyncGroq,
+) -> str:
     """Transcreve o áudio usando Groq Whisper large-v3."""
-    client = AsyncGroq(api_key=settings.groq_api_key)
     file_ext = _get_extension(file.filename, file.content_type)
     filename = file.filename or f"audio.{file_ext}"
 
@@ -125,6 +155,21 @@ async def _transcribe_audio(file_content: bytes, file: UploadFile) -> str:
             response_format="text",
         )
         return str(transcription)
+    except groq_sdk.RateLimitError:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Limite de requisições da API de transcrição atingido. Tente novamente.",
+        )
+    except groq_sdk.APITimeoutError:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="A API de transcrição demorou demais para responder. Tente novamente.",
+        )
+    except groq_sdk.APIConnectionError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Não foi possível conectar à API de transcrição. Tente novamente.",
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -132,10 +177,8 @@ async def _transcribe_audio(file_content: bytes, file: UploadFile) -> str:
         )
 
 
-async def _extract_fields(texto_bruto: str) -> dict[str, Any]:
+async def _extract_fields(texto_bruto: str, client: AsyncGroq) -> dict[str, Any]:
     """Extrai campos estruturados do texto transcrito usando Groq LLaMA 3.1 8B."""
-    client = AsyncGroq(api_key=settings.groq_api_key)
-
     try:
         response = await client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -147,9 +190,15 @@ async def _extract_fields(texto_bruto: str) -> dict[str, Any]:
             max_tokens=512,
             temperature=0,
         )
-        return json.loads(response.choices[0].message.content)
-    except Exception:
+        raw = json.loads(response.choices[0].message.content)
+        return _ExtractedFields.model_validate(raw).model_dump()
+    except ValidationError as exc:
+        # LLM retornou JSON com tipos inválidos — falha não-fatal
+        logger.warning("LLM output failed Pydantic validation: %s", exc)
+        return {}
+    except Exception as exc:
         # Falha na extração é não-fatal: o texto bruto já foi salvo
+        logger.warning("Field extraction failed, persisting raw text only: %s", exc)
         return {}
 
 
