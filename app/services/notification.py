@@ -12,7 +12,7 @@ def get_notifications(db: Session, usuario_id: UUID) -> list[Notification]:
 def count_unread(db: Session, usuario_id: UUID) -> int:
     return (
         db.query(Notification)
-        .filter(Notification.usuario_id == usuario_id, Notification.lida == False)
+        .filter(Notification.usuario_id == usuario_id, Notification.lida.is_(False))
         .count()
     )
 
@@ -34,7 +34,7 @@ def mark_as_read(db: Session, notification_id: UUID, usuario_id: UUID) -> Notifi
 def mark_all_as_read(db: Session, usuario_id: UUID) -> int:
     updated = (
         db.query(Notification)
-        .filter(Notification.usuario_id == usuario_id, Notification.lida == False)
+        .filter(Notification.usuario_id == usuario_id, Notification.lida.is_(False))
         .all()
     )
     for notification in updated:
