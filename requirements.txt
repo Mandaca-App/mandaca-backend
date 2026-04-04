@@ -2,11 +2,12 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 alembic
-psycopg2
+psycopg2-binary
 psycopg[binary]
 pydantic-settings
 python-dotenv
 pytest
+pytest-cov
 httpx
 supabase
 python-multipart

@@ -1,15 +1,16 @@
+from typing import Optional
 from uuid import UUID, uuid4
-from typing import Optional, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
 from app.core.supabase_client import supabase
-from app.models.user import User, TipoUsuario
+from app.models.user import TipoUsuario, User
 
 router = APIRouter(prefix="/users", tags=["users"])
+
 
 class UserResponse(BaseModel):
     id_usuario: UUID
@@ -35,14 +36,14 @@ class UserResponse(BaseModel):
 
 @router.get("/", response_model=list[UserResponse])
 def list_users(db: Session = Depends(get_db)):
-    """Endpoint que retorna uma lista de todos os objetos da entidade usuario no formato 'UserResponse' """
+    """Retorna uma lista de todos os usuários no formato UserResponse."""
     users = db.query(User).all()
     return [UserResponse.from_user(u) for u in users]
 
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: UUID, db: Session = Depends(get_db)):
-    """Endpoint que retorna um objeto de um usuario específico pelo ID no formato 'UserResponse'. """
+    """Endpoint que retorna um objeto de um usuario específico pelo ID no formato 'UserResponse'."""
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(
@@ -78,7 +79,9 @@ async def create_user(
             )
 
         try:
-            file_ext = foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
+            file_ext = (
+                foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
+            )
             storage_path = f"usuarios/{uuid4()}.{file_ext}"
 
             file_content = await foto.read()
@@ -108,6 +111,7 @@ async def create_user(
     db.commit()
     db.refresh(user)
     return UserResponse.from_user(user)
+
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
@@ -157,9 +161,7 @@ async def update_user(
 
         try:
             file_ext = (
-                foto.filename.split(".")[-1]
-                if foto.filename and "." in foto.filename
-                else "jpg"
+                foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
             )
             storage_path = f"usuarios/{uuid4()}.{file_ext}"
 
@@ -174,7 +176,9 @@ async def update_user(
                 },
             )
 
-            user.url_foto_usuario = supabase.storage.from_("mandaca-bucket").get_public_url(storage_path)
+            user.url_foto_usuario = supabase.storage.from_("mandaca-bucket").get_public_url(
+                storage_path
+            )
 
         except Exception:
             pass
@@ -183,6 +187,7 @@ async def update_user(
     db.refresh(user)
 
     return UserResponse.from_user(user)
+
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: UUID, db: Session = Depends(get_db)):

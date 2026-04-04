@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  checkstyle:
+    name: CI - Checkstyle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar ferramentas de lint
+        run: pip install black ruff
+
+      - name: Configurar reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: latest
+
+      - name: Lint com Ruff (comentários inline no PR)
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
+            && echo "github-pr-review" || echo "github-check")
+          ruff check . --output-format=concise > ruff_output.txt 2>&1 || RUFF_FAILED=1
+          echo "=== Ruff output ==="
+          cat ruff_output.txt
+          echo "=== Reviewdog ==="
+          cat ruff_output.txt | reviewdog \
+            -efm="%f:%l:%c: %m" -name="Ruff" \
+            -reporter=$REPORTER -filter-mode=nofilter || REVIEWDOG_FAILED=1
+          [ -z "$REVIEWDOG_FAILED" ] || echo "⚠️ reviewdog falhou ao postar comentários"
+          [ -z "$RUFF_FAILED" ] || { echo "❌ Ruff encontrou violações."; exit 1; }
+
+      - name: Formatação com Black (comentários inline no PR)
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORTER=$([[ "${{ github.event_name }}" == "pull_request" ]] \
+            && echo "github-pr-review" || echo "github-check")
+          black . --check --diff > black_output.txt 2>&1 || BLACK_FAILED=1
+          echo "=== Black output ==="
+          cat black_output.txt
+          echo "=== Reviewdog ==="
+          cat black_output.txt | reviewdog \
+            -f=diff -f.diff.strip=1 -name="Black" \
+            -reporter=$REPORTER -filter-mode=nofilter || REVIEWDOG_FAILED=1
+          [ -z "$REVIEWDOG_FAILED" ] || echo "⚠️ reviewdog falhou ao postar comentários"
+          [ -z "$BLACK_FAILED" ] || { echo "❌ Black encontrou problemas de formatação."; exit 1; }
+
+  commit-check:
+    name: CI - Commit Check SCRUM-ID
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar padrão SCRUM-ID nos commits do PR
+        run: |
+          git log origin/${{ github.base_ref }}..HEAD --no-merges --format="%s" | while read msg; do
+            if ! echo "$msg" | grep -qE '^SCRUM-[0-9]+:'; then
+              echo "❌ Commit fora do padrão: \"$msg\""
+              echo "   Esperado: SCRUM-<ID>: <mensagem>"
+              exit 1
+            fi
+          done
+          echo "✅ Todos os commits seguem o padrão SCRUM-ID."
+
+  test-coverage:
+    name: CI - Test Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Rodar testes com cobertura
+        run: |
+          pytest --cov=app --cov-report=xml:coverage.xml \
+                 --cov-report=term-missing --cov-fail-under=70
+
+      - name: Publicar resumo de cobertura no PR
+        uses: MishaKav/pytest-coverage-comment@main
+        if: github.event_name == 'pull_request'
+        with:
+          pytest-xml-coverage-path: coverage.xml

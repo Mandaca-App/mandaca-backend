@@ -1,7 +1,7 @@
 import uuid
 from datetime import time
 
-from sqlalchemy import String, Time, ForeignKey
+from sqlalchemy import ForeignKey, String, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,7 +11,11 @@ from app.core.session import Base
 class Enterprise(Base):
     __tablename__ = "empresas"
 
-    id_empresa: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True),primary_key=True,default=uuid.uuid4,)
+    id_empresa: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
     nome: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     especialidade: Mapped[str] = mapped_column(String(100), nullable=True)
     endereco: Mapped[str] = mapped_column(String(255), nullable=True)
