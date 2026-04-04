@@ -17,7 +17,7 @@ class NotificationResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_notificaiton(cls, notification: Notification):
+    def from_notification(cls, notification: Notification):
         return cls(
             id=notification.id,
             usuario_id=notification.usuario_id,
@@ -27,8 +27,10 @@ class NotificationResponse(BaseModel):
             data_criacao=notification.data_criacao,
         )
 
+
 class UnreadCountResponse(BaseModel):
     unread_count: int
+
 
 class MessageResponse(BaseModel):
     message: str
