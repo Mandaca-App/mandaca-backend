@@ -1,0 +1,15 @@
+[tool.black]
+line-length = 100
+exclude = '''
+/(
+    alembic
+  | venv
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+exclude = ["alembic", "venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

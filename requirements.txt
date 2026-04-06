@@ -2,9 +2,13 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 alembic
-psycopg2
+psycopg2-binary
 psycopg[binary]
 pydantic-settings
 python-dotenv
 pytest
+pytest-cov
 httpx
+groq>=0.9.0
+supabase
+python-multipart
