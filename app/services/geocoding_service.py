@@ -13,6 +13,8 @@ _TIMEOUT_SECONDS = 10.0
 
 # Nominatim ToS: máximo 1 requisição por segundo por IP.
 # Semáforo previne chamadas simultâneas; sleep garante o intervalo mínimo.
+# AVISO: _semaphore é estado de módulo — incompatível com pytest-xdist (workers paralelos).
+# Para paralelismo de testes, converter para lazy init dentro de geocode_address.
 _semaphore = asyncio.Semaphore(1)
 _RATE_LIMIT_INTERVAL: float = 1.0  # patchável nos testes (patch para 0.0)
 
