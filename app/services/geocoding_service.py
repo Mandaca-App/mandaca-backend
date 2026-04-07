@@ -54,4 +54,8 @@ async def geocode_address(endereco: str) -> tuple[float, float]:
     if not results:
         raise AddressNotFoundError(endereco)
 
-    return float(results[0]["lat"]), float(results[0]["lon"])
+    try:
+        return float(results[0]["lat"]), float(results[0]["lon"])
+    except (KeyError, ValueError) as exc:
+        logger.warning("Nominatim resposta malformada para endereco '%s': %s", endereco, exc)
+        raise GeocodingUnavailableError()

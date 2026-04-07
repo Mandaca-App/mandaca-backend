@@ -135,3 +135,13 @@ async def test_given_valid_address_when_geocoded_then_returns_floats():
     # THEN
     assert isinstance(lat, float)
     assert isinstance(lng, float)
+
+
+@pytest.mark.anyio
+async def test_given_malformed_response_when_geocoded_then_raises_unavailable():
+    # GIVEN — Nominatim retorna resultado sem chaves lat/lon esperadas
+    response = _mock_httpx_response([{"display_name": FAKE_ENDERECO}])
+    with _RATE_PATCH, _patch_client(response):
+        # WHEN / THEN
+        with pytest.raises(GeocodingUnavailableError):
+            await geocode_address(FAKE_ENDERECO)
