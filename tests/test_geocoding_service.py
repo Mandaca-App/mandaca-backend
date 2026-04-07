@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from app.core.exceptions import AddressNotFoundError, GeocodingUnavailableError
 from app.services.geocoding_service import geocode_address
 
 # ---------------------------------------------------------------------------
@@ -20,6 +21,8 @@ from app.services.geocoding_service import geocode_address
 FAKE_ENDERECO = "Rua Doutor Carneiro Leao, Caruaru, Pernambuco, Brasil"
 
 NOMINATIM_SUCCESS = [{"lat": "-8.2827", "lon": "-35.9756", "display_name": FAKE_ENDERECO}]
+
+_RATE_PATCH = patch("app.services.geocoding_service._RATE_LIMIT_INTERVAL", 0.0)
 
 
 def _mock_httpx_response(json_data: list, status_code: int = 200) -> MagicMock:
@@ -47,7 +50,7 @@ def _patch_client(response: MagicMock) -> patch:
 async def test_given_valid_address_when_geocoded_then_returns_lat_lng():
     # GIVEN
     response = _mock_httpx_response(NOMINATIM_SUCCESS)
-    with _patch_client(response):
+    with _RATE_PATCH, _patch_client(response):
         # WHEN
         lat, lng = await geocode_address(FAKE_ENDERECO)
 
@@ -57,57 +60,53 @@ async def test_given_valid_address_when_geocoded_then_returns_lat_lng():
 
 
 @pytest.mark.anyio
-async def test_given_empty_result_when_geocoded_then_raises_422():
+async def test_given_empty_result_when_geocoded_then_raises_address_not_found():
     # GIVEN
     response = _mock_httpx_response([])
-    with _patch_client(response):
+    with _RATE_PATCH, _patch_client(response):
         # WHEN / THEN
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(AddressNotFoundError) as exc_info:
             await geocode_address("Rua Inventada 999, Cidade Ficticia, ZZ")
 
-    assert exc_info.value.status_code == 422
     assert (
-        "não encontrado" in exc_info.value.detail.lower()
-        or "geocodific" in exc_info.value.detail.lower()
+        "geocodific" in str(exc_info.value).lower() or "encontrado" in str(exc_info.value).lower()
     )
 
 
 @pytest.mark.anyio
-async def test_given_timeout_when_geocoded_then_raises_503():
+async def test_given_timeout_when_geocoded_then_raises_geocoding_unavailable():
     # GIVEN
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.geocoding_service.httpx.AsyncClient", return_value=mock_client):
+    with _RATE_PATCH, patch(
+        "app.services.geocoding_service.httpx.AsyncClient", return_value=mock_client
+    ):
         # WHEN / THEN
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(GeocodingUnavailableError):
             await geocode_address(FAKE_ENDERECO)
-
-    assert exc_info.value.status_code == 503
-    assert "indispon" in exc_info.value.detail.lower()
 
 
 @pytest.mark.anyio
-async def test_given_connect_error_when_geocoded_then_raises_503():
+async def test_given_connect_error_when_geocoded_then_raises_geocoding_unavailable():
     # GIVEN
     mock_client = AsyncMock()
     mock_client.get = AsyncMock(side_effect=httpx.ConnectError("connection refused"))
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.geocoding_service.httpx.AsyncClient", return_value=mock_client):
+    with _RATE_PATCH, patch(
+        "app.services.geocoding_service.httpx.AsyncClient", return_value=mock_client
+    ):
         # WHEN / THEN
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(GeocodingUnavailableError):
             await geocode_address(FAKE_ENDERECO)
-
-    assert exc_info.value.status_code == 503
-    assert "indispon" in exc_info.value.detail.lower()
 
 
 @pytest.mark.anyio
-async def test_given_http_error_when_geocoded_then_raises_503():
+async def test_given_http_error_when_geocoded_then_raises_geocoding_unavailable():
     # GIVEN
     mock_client = AsyncMock()
     http_err = httpx.HTTPStatusError(
@@ -117,19 +116,19 @@ async def test_given_http_error_when_geocoded_then_raises_503():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.geocoding_service.httpx.AsyncClient", return_value=mock_client):
+    with _RATE_PATCH, patch(
+        "app.services.geocoding_service.httpx.AsyncClient", return_value=mock_client
+    ):
         # WHEN / THEN
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(GeocodingUnavailableError):
             await geocode_address(FAKE_ENDERECO)
-
-    assert exc_info.value.status_code == 503
 
 
 @pytest.mark.anyio
 async def test_given_valid_address_when_geocoded_then_returns_floats():
     # GIVEN - garante que lat/lng retornam como float, nao string
     response = _mock_httpx_response(NOMINATIM_SUCCESS)
-    with _patch_client(response):
+    with _RATE_PATCH, _patch_client(response):
         # WHEN
         lat, lng = await geocode_address(FAKE_ENDERECO)
 

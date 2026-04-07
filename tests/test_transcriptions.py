@@ -106,7 +106,13 @@ async def test_given_valid_audio_when_processed_then_creates_enterprise():
     db = _mock_db()
 
     # WHEN
-    with patch("app.services.transcription_service.AsyncGroq", return_value=_mock_groq_client()):
+    with (
+        patch("app.services.transcription_service.AsyncGroq", return_value=_mock_groq_client()),
+        patch(
+            "app.services.transcription_service.geocode_address",
+            new=AsyncMock(return_value=(-8.2827, -35.9756)),
+        ),
+    ):
         record = await process_audio_registration(file, FAKE_USUARIO_ID, db)
 
     # THEN
@@ -197,7 +203,13 @@ async def test_given_existing_enterprise_when_processed_then_updates_fields():
     db = _mock_db(existing=existing)
 
     # WHEN
-    with patch("app.services.transcription_service.AsyncGroq", return_value=_mock_groq_client()):
+    with (
+        patch("app.services.transcription_service.AsyncGroq", return_value=_mock_groq_client()),
+        patch(
+            "app.services.transcription_service.geocode_address",
+            new=AsyncMock(return_value=(-8.2827, -35.9756)),
+        ),
+    ):
         record = await process_audio_registration(file, FAKE_USUARIO_ID, db)
 
     # THEN — update, não insert
