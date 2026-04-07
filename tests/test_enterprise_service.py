@@ -358,6 +358,63 @@ async def test_given_usuario_id_already_linked_when_update_then_raises():
             await enterprise_service.update(FAKE_ENTERPRISE_ID, payload, db)
 
 
+@pytest.mark.anyio
+async def test_given_unknown_usuario_id_when_update_then_raises_not_found():
+    # GIVEN
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.get.return_value = None  # usuário inexistente
+    payload = EnterpriseUpdate(usuario_id=FAKE_OTHER_USER_ID)
+
+    with patch("app.services.enterprise_service.get_by_id", return_value=enterprise):
+        # WHEN / THEN
+        with pytest.raises(UserNotFoundError):
+            await enterprise_service.update(FAKE_ENTERPRISE_ID, payload, db)
+
+
+@pytest.mark.anyio
+async def test_given_new_nome_when_update_then_changes_name():
+    # GIVEN
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.execute.return_value.scalar_one_or_none.return_value = None  # sem duplicata
+    payload = EnterpriseUpdate(nome="Nome Atualizado")
+
+    with patch("app.services.enterprise_service.get_by_id", return_value=enterprise):
+        # WHEN
+        await enterprise_service.update(FAKE_ENTERPRISE_ID, payload, db)
+
+    # THEN
+    assert enterprise.nome == "Nome Atualizado"
+    db.commit.assert_called_once()
+
+
+@pytest.mark.anyio
+async def test_given_schedule_and_phone_when_update_then_persists_fields():
+    # GIVEN
+    from datetime import time
+
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    payload = EnterpriseUpdate(
+        especialidade="Culinária nordestina",
+        hora_abrir=time(8, 0),
+        hora_fechar=time(18, 0),
+        telefone="81999999999",
+    )
+
+    with patch("app.services.enterprise_service.get_by_id", return_value=enterprise):
+        # WHEN
+        await enterprise_service.update(FAKE_ENTERPRISE_ID, payload, db)
+
+    # THEN
+    assert enterprise.especialidade == "Culinária nordestina"
+    assert enterprise.hora_abrir == time(8, 0)
+    assert enterprise.hora_fechar == time(18, 0)
+    assert enterprise.telefone == "81999999999"
+    db.commit.assert_called_once()
+
+
 # ---------------------------------------------------------------------------
 # get_percentage
 # ---------------------------------------------------------------------------
