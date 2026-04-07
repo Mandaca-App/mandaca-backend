@@ -123,6 +123,8 @@ async def update(enterprise_id: UUID, payload: EnterpriseUpdate, db: Session) ->
 
     if payload.especialidade is not None:
         enterprise.especialidade = payload.especialidade
+    # Nota: endereco=None é tratado como "não alterar". Para zerar o campo,
+    # use uma string vazia — o geocoder retornará AddressNotFoundError (422).
     if payload.endereco is not None:
         enterprise.endereco = payload.endereco
         lat, lng = await geocode_address(payload.endereco)
