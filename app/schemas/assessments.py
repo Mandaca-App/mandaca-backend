@@ -1,0 +1,30 @@
+from typing import Annotated, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, StringConstraints
+
+from app.models.assessment import TipoAvaliacao
+
+
+class AssessmentCreate(BaseModel):
+    texto: Annotated[Optional[str], StringConstraints(max_length=500)] = None
+    tipo_avaliacao: TipoAvaliacao = TipoAvaliacao.NEUTRA
+    usuario_id: UUID
+    empresa_id: UUID
+
+
+class AssessmentUpdate(BaseModel):
+    texto: Annotated[Optional[str], StringConstraints(max_length=500)] = None
+    tipo_avaliacao: Optional[TipoAvaliacao] = None
+    usuario_id: Optional[UUID] = None
+    empresa_id: Optional[UUID] = None
+
+
+class AssessmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id_avaliacao: UUID
+    texto: Optional[str] = None
+    tipo_avaliacao: TipoAvaliacao
+    usuario_id: UUID
+    empresa_id: UUID
