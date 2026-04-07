@@ -4,13 +4,15 @@ Services levantam estas exceções. O FastAPI converte para HTTPException
 via handlers registrados em app/main.py — nunca importe fastapi nos services.
 """
 
+from uuid import UUID
+
 
 class MandacaError(Exception):
     """Classe base para todas as exceções de domínio."""
 
 
 class EnterpriseNotFoundError(MandacaError):
-    def __init__(self, enterprise_id: str) -> None:
+    def __init__(self, enterprise_id: UUID | str) -> None:
         super().__init__(f"Empresa não encontrada: {enterprise_id}")
         self.enterprise_id = enterprise_id
 
@@ -22,19 +24,19 @@ class DuplicateEnterpriseNameError(MandacaError):
 
 
 class UserNotFoundError(MandacaError):
-    def __init__(self, usuario_id: str) -> None:
+    def __init__(self, usuario_id: UUID | str) -> None:
         super().__init__(f"Usuário vinculado não encontrado: {usuario_id}")
         self.usuario_id = usuario_id
 
 
 class UserAlreadyHasEnterpriseError(MandacaError):
-    def __init__(self, usuario_id: str) -> None:
+    def __init__(self, usuario_id: UUID | str) -> None:
         super().__init__(f"Este usuário já possui uma empresa vinculada: {usuario_id}")
         self.usuario_id = usuario_id
 
 
 class UserAlreadyLinkedError(MandacaError):
-    def __init__(self, usuario_id: str) -> None:
+    def __init__(self, usuario_id: UUID | str) -> None:
         super().__init__(f"Este usuário já está vinculado a outra empresa: {usuario_id}")
         self.usuario_id = usuario_id
 
