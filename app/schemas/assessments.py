@@ -7,15 +7,13 @@ from app.models.assessment import TipoAvaliacao
 
 
 class AssessmentCreate(BaseModel):
-    texto: Annotated[Optional[str], StringConstraints(max_length=500)] = None
-    tipo_avaliacao: TipoAvaliacao = TipoAvaliacao.NEUTRA
+    texto: Annotated[Optional[str], StringConstraints(max_length=500)]
     usuario_id: UUID
     empresa_id: UUID
 
 
 class AssessmentUpdate(BaseModel):
     texto: Annotated[Optional[str], StringConstraints(max_length=500)] = None
-    tipo_avaliacao: Optional[TipoAvaliacao] = None
     usuario_id: Optional[UUID] = None
     empresa_id: Optional[UUID] = None
 

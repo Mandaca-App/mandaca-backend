@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +10,7 @@ from app.models.assessment import Assessment
 from app.models.enterprise import Enterprise
 from app.models.user import User
 from app.schemas.assessments import AssessmentCreate, AssessmentResponse, AssessmentUpdate
+from app.services.assessment_classifier import classify_assessment_text
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 
@@ -37,9 +38,17 @@ def create_assessment(
             detail="Empresa não encontrada.",
         )
 
+    try:
+        tipo = classify_assessment_text(assessment_in.texto)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Não foi possível classificar a avaliação no momento. Tente novamente.",
+        )
+
     assessment = Assessment(
         texto=assessment_in.texto,
-        tipo_avaliacao=assessment_in.tipo_avaliacao,
+        tipo_avaliacao=tipo,
         usuario_id=assessment_in.usuario_id,
         empresa_id=assessment_in.empresa_id,
     )
