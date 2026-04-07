@@ -156,3 +156,28 @@ def delete_assessment(
     db.delete(assessment)
     db.commit()
     return None
+
+@router.get(
+    "/by-enterprise/{empresa_id}",
+    response_model=list[AssessmentResponse],
+    status_code=status.HTTP_200_OK,
+)
+def get_assessments_by_enterprise(
+    empresa_id: UUID,
+    db: Session = Depends(get_db),
+) -> list[AssessmentResponse]:
+    """
+    Retorna todas as avaliações associadas a uma empresa específica.
+    """
+
+    empresa = db.get(Enterprise, empresa_id)
+    if not empresa:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada.",
+        )
+
+    stmt = select(Assessment).where(Assessment.empresa_id == empresa_id)
+    assessments = db.scalars(stmt).all()
+
+    return assessments
