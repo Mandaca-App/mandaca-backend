@@ -5,15 +5,22 @@ Foco: verificar que cada exceção de domínio é convertida ao status HTTP corr
 Estratégia: TestClient com serviços mockados para forçar cada tipo de exceção.
 """
 
+from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
 from app.core.exceptions import (
     AddressNotFoundError,
+    AudioRateLimitError,
+    AudioServiceConnectionError,
+    AudioServiceTimeoutError,
+    AudioTooLargeError,
+    AudioTranscriptionError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     GeocodingUnavailableError,
+    UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
     UserNotFoundError,
@@ -159,3 +166,96 @@ def test_given_geocoding_unavailable_when_creating_enterprise_then_returns_503()
     # THEN
     assert response.status_code == 503
     assert "indispon" in response.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Handlers de áudio (413, 415, 429, 502, 504)
+# ---------------------------------------------------------------------------
+
+_AUDIO_POST = "/transcriptions/"
+_AUDIO_FILES = {"audio": ("test.mp3", BytesIO(b"fake"), "audio/mpeg")}
+_AUDIO_DATA = {"usuario_id": FAKE_UUID}
+
+
+def test_given_unsupported_format_when_transcribing_then_returns_415():
+    # GIVEN
+    with patch(
+        "app.routers.transcriptions.process_audio_registration",
+        new=AsyncMock(side_effect=UnsupportedAudioFormatError("audio/ogg")),
+    ):
+        # WHEN
+        response = client.post(_AUDIO_POST, files=_AUDIO_FILES, data=_AUDIO_DATA)
+
+    # THEN
+    assert response.status_code == 415
+    assert "não suportado" in response.json()["detail"].lower()
+
+
+def test_given_audio_too_large_when_transcribing_then_returns_413():
+    # GIVEN
+    with patch(
+        "app.routers.transcriptions.process_audio_registration",
+        new=AsyncMock(side_effect=AudioTooLargeError()),
+    ):
+        # WHEN
+        response = client.post(_AUDIO_POST, files=_AUDIO_FILES, data=_AUDIO_DATA)
+
+    # THEN
+    assert response.status_code == 413
+    assert "25 mb" in response.json()["detail"].lower()
+
+
+def test_given_rate_limit_when_transcribing_then_returns_429():
+    # GIVEN
+    with patch(
+        "app.routers.transcriptions.process_audio_registration",
+        new=AsyncMock(side_effect=AudioRateLimitError()),
+    ):
+        # WHEN
+        response = client.post(_AUDIO_POST, files=_AUDIO_FILES, data=_AUDIO_DATA)
+
+    # THEN
+    assert response.status_code == 429
+    assert "tente novamente" in response.json()["detail"].lower()
+
+
+def test_given_connection_error_when_transcribing_then_returns_502():
+    # GIVEN
+    with patch(
+        "app.routers.transcriptions.process_audio_registration",
+        new=AsyncMock(side_effect=AudioServiceConnectionError()),
+    ):
+        # WHEN
+        response = client.post(_AUDIO_POST, files=_AUDIO_FILES, data=_AUDIO_DATA)
+
+    # THEN
+    assert response.status_code == 502
+    assert "conectar" in response.json()["detail"].lower()
+
+
+def test_given_transcription_error_when_transcribing_then_returns_502():
+    # GIVEN
+    with patch(
+        "app.routers.transcriptions.process_audio_registration",
+        new=AsyncMock(side_effect=AudioTranscriptionError("falha interna")),
+    ):
+        # WHEN
+        response = client.post(_AUDIO_POST, files=_AUDIO_FILES, data=_AUDIO_DATA)
+
+    # THEN
+    assert response.status_code == 502
+    assert "transcrição" in response.json()["detail"].lower()
+
+
+def test_given_timeout_when_transcribing_then_returns_504():
+    # GIVEN
+    with patch(
+        "app.routers.transcriptions.process_audio_registration",
+        new=AsyncMock(side_effect=AudioServiceTimeoutError()),
+    ):
+        # WHEN
+        response = client.post(_AUDIO_POST, files=_AUDIO_FILES, data=_AUDIO_DATA)
+
+    # THEN
+    assert response.status_code == 504
+    assert "demorou demais" in response.json()["detail"].lower()

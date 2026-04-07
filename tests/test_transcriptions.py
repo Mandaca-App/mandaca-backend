@@ -16,9 +16,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import groq as groq_sdk
 import pytest
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 
-from app.core.exceptions import GeocodingUnavailableError
+from app.core.exceptions import (
+    AudioRateLimitError,
+    AudioServiceConnectionError,
+    AudioServiceTimeoutError,
+    AudioTooLargeError,
+    AudioTranscriptionError,
+    GeocodingUnavailableError,
+    UnsupportedAudioFormatError,
+)
 from app.models.enterprise import Enterprise
 from app.schemas.transcriptions import EnterpriseFromAudioResponse  # noqa: F401
 from app.services.transcription_service import (
@@ -132,11 +140,10 @@ async def test_given_invalid_content_type_when_processed_then_raises_415():
     db = MagicMock()
 
     # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(UnsupportedAudioFormatError) as exc_info:
         await process_audio_registration(file, FAKE_USUARIO_ID, db)
 
-    assert exc_info.value.status_code == 415
-    assert "não suportado" in exc_info.value.detail
+    assert "não suportado" in str(exc_info.value)
     db.add.assert_not_called()
 
 
@@ -148,10 +155,9 @@ async def test_given_file_over_25mb_when_processed_then_raises_413():
     db = MagicMock()
 
     # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AudioTooLargeError):
         await process_audio_registration(file, FAKE_USUARIO_ID, db)
 
-    assert exc_info.value.status_code == 413
     db.add.assert_not_called()
 
 
@@ -162,10 +168,9 @@ async def test_given_size_header_over_25mb_when_processed_then_raises_413_before
     db = MagicMock()
 
     # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AudioTooLargeError):
         await process_audio_registration(file, FAKE_USUARIO_ID, db)
 
-    assert exc_info.value.status_code == 413
     db.add.assert_not_called()
 
 
@@ -271,11 +276,10 @@ async def test_given_whisper_fails_when_called_then_raises_502():
     client.audio.transcriptions.create = AsyncMock(side_effect=Exception("unknown error"))
 
     # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AudioTranscriptionError) as exc_info:
         await _transcribe_audio(b"audio-bytes", file, client)
 
-    assert exc_info.value.status_code == 502
-    assert "transcrição" in exc_info.value.detail
+    assert "transcrição" in str(exc_info.value)
 
 
 @pytest.mark.anyio
@@ -288,11 +292,10 @@ async def test_given_rate_limit_when_whisper_called_then_raises_429():
     )
 
     # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AudioRateLimitError) as exc_info:
         await _transcribe_audio(b"audio-bytes", file, client)
 
-    assert exc_info.value.status_code == 429
-    assert "Tente novamente" in exc_info.value.detail
+    assert "Tente novamente" in str(exc_info.value)
 
 
 @pytest.mark.anyio
@@ -305,11 +308,10 @@ async def test_given_connection_error_when_whisper_called_then_raises_502():
     )
 
     # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AudioServiceConnectionError) as exc_info:
         await _transcribe_audio(b"audio-bytes", file, client)
 
-    assert exc_info.value.status_code == 502
-    assert "conectar" in exc_info.value.detail
+    assert "conectar" in str(exc_info.value)
 
 
 @pytest.mark.anyio
@@ -322,11 +324,10 @@ async def test_given_timeout_when_whisper_called_then_raises_504():
     )
 
     # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(AudioServiceTimeoutError) as exc_info:
         await _transcribe_audio(b"audio-bytes", file, client)
 
-    assert exc_info.value.status_code == 504
-    assert "demorou demais" in exc_info.value.detail
+    assert "demorou demais" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
