@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 
 import app.models
 from app.core.config import settings
-from app.routers import enterprises, notifications, photos, transcriptions, users
 from app.core.exceptions import (
     AddressNotFoundError,
     AudioRateLimitError,
@@ -20,6 +19,7 @@ from app.core.exceptions import (
     UserAlreadyLinkedError,
     UserNotFoundError,
 )
+from app.routers import enterprises, notifications, photos, transcriptions, users
 
 app = FastAPI(title="Meu Projeto", version="0.1.0")
 
