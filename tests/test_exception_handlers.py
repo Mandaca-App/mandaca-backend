@@ -15,6 +15,7 @@ from app.core.exceptions import (
     EnterpriseNotFoundError,
     GeocodingUnavailableError,
     UserAlreadyHasEnterpriseError,
+    UserAlreadyLinkedError,
     UserNotFoundError,
 )
 from app.main import app
@@ -92,6 +93,22 @@ def test_given_user_already_has_enterprise_when_creating_then_returns_400():
         response = client.post(
             "/enterprises/",
             json={"nome": "Empresa Y", "usuario_id": FAKE_UUID},
+        )
+
+    # THEN
+    assert response.status_code == 400
+
+
+def test_given_user_already_linked_when_updating_then_returns_400():
+    # GIVEN
+    with patch(
+        "app.services.enterprise_service.update",
+        new=AsyncMock(side_effect=UserAlreadyLinkedError(FAKE_UUID)),
+    ):
+        # WHEN
+        response = client.put(
+            f"/enterprises/{FAKE_UUID}",
+            json={"usuario_id": FAKE_UUID},
         )
 
     # THEN
