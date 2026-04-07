@@ -123,10 +123,15 @@ def update_assessment(
         assessment.empresa_id = assessment_in.empresa_id
 
     if assessment_in.texto is not None:
+        try:
+            novo_tipo = classify_assessment_text(assessment_in.texto)
+        except RuntimeError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Não foi possível classificar a avaliação no momento. Tente novamente.",
+            )
         assessment.texto = assessment_in.texto
-
-    if assessment_in.tipo_avaliacao is not None:
-        assessment.tipo_avaliacao = assessment_in.tipo_avaliacao
+        assessment.tipo_avaliacao = novo_tipo
 
     db.commit()
     db.refresh(assessment)
