@@ -5,14 +5,23 @@ import uuid
 from typing import Any
 
 import groq as groq_sdk
-from fastapi import HTTPException, UploadFile, status
+from fastapi import UploadFile
 from groq import AsyncGroq
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import AddressNotFoundError, GeocodingUnavailableError
+from app.core.exceptions import (
+    AddressNotFoundError,
+    AudioRateLimitError,
+    AudioServiceConnectionError,
+    AudioServiceTimeoutError,
+    AudioTooLargeError,
+    AudioTranscriptionError,
+    GeocodingUnavailableError,
+    UnsupportedAudioFormatError,
+)
 from app.models.enterprise import Enterprise
 from app.services.geocoding_service import geocode_address
 
@@ -52,8 +61,6 @@ Campos:
 - telefone: número de telefone (string ou null, somente dígitos, espaços e hífens)
 """
 
-_SIZE_EXCEEDED_MSG = "O arquivo de áudio excede o limite de 25 MB."
-
 
 class _ExtractedFields(BaseModel):
     """Schema interno para validar a saída do LLM antes de persistir."""
@@ -72,25 +79,15 @@ async def process_audio_registration(
 ) -> Enterprise:
     """Transcreve áudio, extrai campos e cria a empresa do usuário em empresas."""
     if file.content_type not in ALLOWED_AUDIO_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Formato de áudio não suportado: {file.content_type}. "
-            "Use mp3, wav, webm, ogg ou m4a.",
-        )
+        raise UnsupportedAudioFormatError(file.content_type or "desconhecido")
 
     if file.size is not None and file.size > MAX_AUDIO_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=_SIZE_EXCEEDED_MSG,
-        )
+        raise AudioTooLargeError()
 
     file_content = await file.read()
 
     if len(file_content) > MAX_AUDIO_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=_SIZE_EXCEEDED_MSG,
-        )
+        raise AudioTooLargeError()
 
     client = AsyncGroq(api_key=settings.groq_api_key)
     texto_bruto = await _transcribe_audio(file_content, file, client)
@@ -159,25 +156,13 @@ async def _transcribe_audio(
         )
         return str(transcription)
     except groq_sdk.RateLimitError:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Limite de requisições da API de transcrição atingido. Tente novamente.",
-        )
+        raise AudioRateLimitError()
     except groq_sdk.APITimeoutError:
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="A API de transcrição demorou demais para responder. Tente novamente.",
-        )
+        raise AudioServiceTimeoutError()
     except groq_sdk.APIConnectionError:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Não foi possível conectar à API de transcrição. Tente novamente.",
-        )
+        raise AudioServiceConnectionError()
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Falha na transcrição do áudio: {exc}",
-        )
+        raise AudioTranscriptionError(str(exc))
 
 
 async def _extract_fields(texto_bruto: str, client: AsyncGroq) -> dict[str, Any]:
