@@ -11,7 +11,9 @@ from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.exceptions import AddressNotFoundError, GeocodingUnavailableError
 from app.models.enterprise import Enterprise
+from app.services.geocoding_service import geocode_address
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +97,22 @@ async def process_audio_registration(
 
     enterprise = db.query(Enterprise).filter(Enterprise.usuario_id == usuario_id).first()
 
+    novo_endereco: str | None = campos.get("endereco")
+    lat: float | None = None
+    lng: float | None = None
+    if novo_endereco:
+        try:
+            lat, lng = await geocode_address(novo_endereco)
+        except (AddressNotFoundError, GeocodingUnavailableError) as exc:
+            logger.warning("Geocodificacao ignorada na transcricao: %s", exc)
+
     if enterprise:
         enterprise.nome = campos.get("nome") or enterprise.nome
         enterprise.especialidade = campos.get("especialidade") or enterprise.especialidade
-        enterprise.endereco = campos.get("endereco") or enterprise.endereco
+        if novo_endereco:
+            enterprise.endereco = novo_endereco
+            enterprise.latitude = lat
+            enterprise.longitude = lng
         enterprise.historia = campos.get("historia") or enterprise.historia
         enterprise.telefone = campos.get("telefone") or enterprise.telefone
     else:
@@ -107,9 +121,11 @@ async def process_audio_registration(
             usuario_id=usuario_id,
             nome=campos.get("nome") or "Empresa sem nome",
             especialidade=campos.get("especialidade"),
-            endereco=campos.get("endereco"),
+            endereco=novo_endereco,
             historia=campos.get("historia"),
             telefone=campos.get("telefone"),
+            latitude=lat,
+            longitude=lng,
         )
         db.add(enterprise)
 
