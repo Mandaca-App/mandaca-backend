@@ -1,28 +1,34 @@
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
 
 
 def get_notifications(db: Session, usuario_id: UUID) -> list[Notification]:
-    return db.query(Notification).filter(Notification.usuario_id == usuario_id).all()
+    stmt = select(Notification).where(
+        Notification.usuario_id == usuario_id, Notification.deleted_at.is_(None)
+    )
+    return list(db.execute(stmt).scalars().all())
 
 
 def count_unread(db: Session, usuario_id: UUID) -> int:
-    return (
-        db.query(Notification)
-        .filter(Notification.usuario_id == usuario_id, Notification.lida.is_(False))
-        .count()
+    stmt = select(Notification).where(
+        Notification.usuario_id == usuario_id,
+        Notification.lida.is_(False),
+        Notification.deleted_at.is_(None),
     )
+    return len(db.execute(stmt).scalars().all())
 
 
 def mark_as_read(db: Session, notification_id: UUID, usuario_id: UUID) -> Notification | None:
-    notification = (
-        db.query(Notification)
-        .filter(Notification.id == notification_id, Notification.usuario_id == usuario_id)
-        .first()
+    stmt = select(Notification).where(
+        Notification.id == notification_id,
+        Notification.usuario_id == usuario_id,
+        Notification.deleted_at.is_(None),
     )
+    notification = db.execute(stmt).scalars().first()
     if not notification:
         return None
     notification.lida = True
@@ -32,11 +38,12 @@ def mark_as_read(db: Session, notification_id: UUID, usuario_id: UUID) -> Notifi
 
 
 def mark_all_as_read(db: Session, usuario_id: UUID) -> int:
-    updated = (
-        db.query(Notification)
-        .filter(Notification.usuario_id == usuario_id, Notification.lida.is_(False))
-        .all()
+    stmt = select(Notification).where(
+        Notification.usuario_id == usuario_id,
+        Notification.lida.is_(False),
+        Notification.deleted_at.is_(None),
     )
+    updated = list(db.execute(stmt).scalars().all())
     for notification in updated:
         notification.lida = True
     db.commit()

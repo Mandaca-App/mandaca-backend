@@ -26,5 +26,8 @@ class Notification(Base):
     data_criacao: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None, nullable=True
+    )
 
     usuario = relationship("User", back_populates="notificacoes")
