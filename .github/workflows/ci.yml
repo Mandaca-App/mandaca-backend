@@ -111,6 +111,7 @@ jobs:
           SUPABASE_URL: "https://test.supabase.co"
           SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key"
           GROQ_API_KEY: "test-groq-api-key"
+          GOOGLE_MAPS_API_KEY: "test-google-maps-api-key"
         run: |
           pytest --cov=app --cov-report=xml:coverage.xml \
                  --cov-report=term-missing --cov-fail-under=70
