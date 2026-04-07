@@ -50,3 +50,41 @@ class AddressNotFoundError(MandacaError):
 class GeocodingUnavailableError(MandacaError):
     def __init__(self) -> None:
         super().__init__("Serviço de geolocalização temporariamente indisponível.")
+
+
+# ---------------------------------------------------------------------------
+# Exceções de áudio / transcrição (transcription_service)
+# ---------------------------------------------------------------------------
+
+
+class UnsupportedAudioFormatError(MandacaError):
+    def __init__(self, content_type: str) -> None:
+        super().__init__(
+            f"Formato de áudio não suportado: {content_type}. Use mp3, wav, webm, ogg ou m4a."
+        )
+        self.content_type = content_type
+
+
+class AudioTooLargeError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("O arquivo de áudio excede o limite de 25 MB.")
+
+
+class AudioRateLimitError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Limite de requisições da API de transcrição atingido. Tente novamente.")
+
+
+class AudioServiceConnectionError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Não foi possível conectar à API de transcrição. Tente novamente.")
+
+
+class AudioServiceTimeoutError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("A API de transcrição demorou demais para responder. Tente novamente.")
+
+
+class AudioTranscriptionError(MandacaError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"Falha na transcrição do áudio: {detail}")
