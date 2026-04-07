@@ -1,50 +1,53 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.models.notification import Notification
 
 
-def get_notifications(db: Session, usuario_id: UUID) -> list[Notification]:
-    stmt = select(Notification).where(
-        Notification.usuario_id == usuario_id, Notification.deleted_at.is_(None)
-    )
-    return list(db.execute(stmt).scalars().all())
+class NotificationService:
+    def __init__(self, db: Session) -> None:
+        self.db = db
 
+    async def get_notifications(self, usuario_id: UUID) -> list[Notification]:
+        stmt = select(Notification).where(
+            Notification.usuario_id == usuario_id, Notification.deleted_at.is_(None)
+        )
+        return list(self.db.execute(stmt).scalars().all())
 
-def count_unread(db: Session, usuario_id: UUID) -> int:
-    stmt = select(Notification).where(
-        Notification.usuario_id == usuario_id,
-        Notification.lida.is_(False),
-        Notification.deleted_at.is_(None),
-    )
-    return len(db.execute(stmt).scalars().all())
+    async def count_unread(self, usuario_id: UUID) -> int:
+        stmt = select(func.count()).where(
+            Notification.usuario_id == usuario_id,
+            Notification.lida.is_(False),
+            Notification.deleted_at.is_(None),
+        )
+        return self.db.execute(stmt).scalar_one()
 
-
-def mark_as_read(db: Session, notification_id: UUID, usuario_id: UUID) -> Notification | None:
-    stmt = select(Notification).where(
-        Notification.id == notification_id,
-        Notification.usuario_id == usuario_id,
-        Notification.deleted_at.is_(None),
-    )
-    notification = db.execute(stmt).scalars().first()
-    if not notification:
-        return None
-    notification.lida = True
-    db.commit()
-    db.refresh(notification)
-    return notification
-
-
-def mark_all_as_read(db: Session, usuario_id: UUID) -> int:
-    stmt = select(Notification).where(
-        Notification.usuario_id == usuario_id,
-        Notification.lida.is_(False),
-        Notification.deleted_at.is_(None),
-    )
-    updated = list(db.execute(stmt).scalars().all())
-    for notification in updated:
+    async def mark_as_read(self, notification_id: UUID, usuario_id: UUID) -> Notification | None:
+        stmt = select(Notification).where(
+            Notification.id == notification_id,
+            Notification.usuario_id == usuario_id,
+            Notification.deleted_at.is_(None),
+        )
+        notification = self.db.execute(stmt).scalars().first()
+        if not notification:
+            return None
         notification.lida = True
-    db.commit()
-    return len(updated)
+        self.db.commit()
+        self.db.refresh(notification)
+        return notification
+
+    async def mark_all_as_read(self, usuario_id: UUID) -> int:
+        stmt = (
+            update(Notification)
+            .where(
+                Notification.usuario_id == usuario_id,
+                Notification.lida.is_(False),
+                Notification.deleted_at.is_(None),
+            )
+            .values(lida=True)
+        )
+        result = self.db.execute(stmt)
+        self.db.commit()
+        return result.rowcount

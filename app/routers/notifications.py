@@ -9,26 +9,40 @@ from app.schemas.notification import (
     NotificationResponse,
     UnreadCountResponse,
 )
-from app.services import notification as notification_service
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
+def get_notification_service(db: Session = Depends(get_db)) -> NotificationService:
+    return NotificationService(db)
+
+
 @router.get("/", response_model=list[NotificationResponse])
-def list_notifications(usuario_id: UUID, db: Session = Depends(get_db)):
-    notifications = notification_service.get_notifications(db, usuario_id)
+async def list_notifications(
+    usuario_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+):
+    notifications = await service.get_notifications(usuario_id)
     return [NotificationResponse.from_notification(n) for n in notifications]
 
 
 @router.get("/count", response_model=UnreadCountResponse)
-def count_unread(usuario_id: UUID, db: Session = Depends(get_db)):
-    count = notification_service.count_unread(db, usuario_id)
+async def count_unread(
+    usuario_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+):
+    count = await service.count_unread(usuario_id)
     return UnreadCountResponse(unread_count=count)
 
 
 @router.patch("/{notification_id}/read", response_model=NotificationResponse)
-def mark_as_read(notification_id: UUID, usuario_id: UUID, db: Session = Depends(get_db)):
-    notification = notification_service.mark_as_read(db, notification_id, usuario_id)
+async def mark_as_read(
+    notification_id: UUID,
+    usuario_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+):
+    notification = await service.mark_as_read(notification_id, usuario_id)
     if not notification:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -38,6 +52,9 @@ def mark_as_read(notification_id: UUID, usuario_id: UUID, db: Session = Depends(
 
 
 @router.patch("/read-all", response_model=MessageResponse)
-def mark_all_as_read(usuario_id: UUID, db: Session = Depends(get_db)):
-    count = notification_service.mark_all_as_read(db, usuario_id)
+async def mark_all_as_read(
+    usuario_id: UUID,
+    service: NotificationService = Depends(get_notification_service),
+):
+    count = await service.mark_all_as_read(usuario_id)
     return MessageResponse(message=f"{count} notificações marcadas como lidas")

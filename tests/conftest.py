@@ -9,7 +9,7 @@ os.environ["APP_ENV"] = "testing"
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import StaticPool, create_engine
+from sqlalchemy import StaticPool, create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.core.session import Base, get_db
@@ -25,6 +25,11 @@ def db():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, _):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine)
     session = Session()

@@ -30,4 +30,4 @@ class Notification(Base):
         DateTime(timezone=True), default=None, nullable=True
     )
 
-    usuario = relationship("User", back_populates="notificacoes")
+    usuario: Mapped["User"] = relationship("User", back_populates="notificacoes")  # noqa: F821
