@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.session import get_db
 from app.models.enterprise import Enterprise
 from app.models.user import User
+from app.services.geocoding_service import geocode_address
 
 router = APIRouter(prefix="/enterprises", tags=["enterprises"])
 
@@ -66,6 +67,8 @@ class PhotoOverviewResponse(BaseModel):
 class EnterpriseOverviewResponse(BaseModel):
     id_empresa: UUID
     endereco: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     historia: Optional[str] = None
     fotos: list[PhotoOverviewResponse]
 
@@ -86,6 +89,8 @@ def get_enterprise_overview(
     return EnterpriseOverviewResponse(
         id_empresa=enterprise.id_empresa,
         endereco=enterprise.endereco,
+        latitude=enterprise.latitude,
+        longitude=enterprise.longitude,
         historia=enterprise.historia,
         fotos=[
             PhotoOverviewResponse(
@@ -115,7 +120,7 @@ def get_enterprise(enterprise_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=EnterpriseResponse, status_code=status.HTTP_201_CREATED)
-def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
+async def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
     """Endpoint que cria uma nova empresa a partir dos dados enviados no corpo da requisição."""
     existing_name = db.query(Enterprise).filter(Enterprise.nome == payload.nome).first()
     if existing_name:
@@ -137,6 +142,10 @@ def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
             detail="Este usuário já possui uma empresa vinculada",
         )
 
+    lat, lng = None, None
+    if payload.endereco:
+        lat, lng = await geocode_address(payload.endereco)
+
     enterprise = Enterprise(
         nome=payload.nome,
         especialidade=payload.especialidade,
@@ -146,6 +155,8 @@ def create_enterprise(payload: EnterpriseCreate, db: Session = Depends(get_db)):
         hora_fechar=payload.hora_fechar,
         telefone=payload.telefone,
         usuario_id=payload.usuario_id,
+        latitude=lat,
+        longitude=lng,
     )
 
     db.add(enterprise)
@@ -192,7 +203,7 @@ def enterprise_percentage(enterprise_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.put("/{enterprise_id}", response_model=EnterpriseResponse)
-def update_enterprise(
+async def update_enterprise(
     enterprise_id: UUID,
     payload: EnterpriseUpdate,
     db: Session = Depends(get_db),
@@ -241,6 +252,9 @@ def update_enterprise(
         enterprise.especialidade = payload.especialidade
     if payload.endereco is not None:
         enterprise.endereco = payload.endereco
+        lat, lng = await geocode_address(payload.endereco)
+        enterprise.latitude = lat
+        enterprise.longitude = lng
     if payload.historia is not None:
         enterprise.historia = payload.historia
     if payload.hora_abrir is not None:
