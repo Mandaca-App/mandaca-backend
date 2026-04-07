@@ -22,7 +22,7 @@ class Assessment(Base):
     id_avaliacao: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    texto: Mapped[str] = mapped_column(String(500), nullable=True)
+    texto: Mapped[str] = mapped_column(String(500), nullable=False)
     tipo_avaliacao: Mapped[TipoAvaliacao] = mapped_column(
         Enum(TipoAvaliacao, name="tipo_avaliacao_enum"),
         nullable=False,
