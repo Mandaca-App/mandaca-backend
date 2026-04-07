@@ -259,3 +259,17 @@ def test_given_timeout_when_transcribing_then_returns_504():
     # THEN
     assert response.status_code == 504
     assert "demorou demais" in response.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+
+
+def test_health_check_returns_ok():
+    # WHEN
+    response = client.get("/")
+
+    # THEN
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
