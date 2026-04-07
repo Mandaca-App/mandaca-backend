@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 
 class EnterpriseCreate(BaseModel):
-    nome: Annotated[str, StringConstraints(max_length=255)]
+    nome: Annotated[str, StringConstraints(min_length=1, max_length=255)]
     especialidade: Annotated[Optional[str], StringConstraints(max_length=100)] = None
     endereco: Annotated[Optional[str], StringConstraints(max_length=255)] = None
     historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
@@ -17,7 +17,7 @@ class EnterpriseCreate(BaseModel):
 
 
 class EnterpriseUpdate(BaseModel):
-    nome: Annotated[Optional[str], StringConstraints(max_length=255)] = None
+    nome: Annotated[Optional[str], StringConstraints(min_length=1, max_length=255)] = None
     especialidade: Annotated[Optional[str], StringConstraints(max_length=100)] = None
     endereco: Annotated[Optional[str], StringConstraints(max_length=255)] = None
     historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
