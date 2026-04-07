@@ -3,6 +3,8 @@ import os
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["SUPABASE_URL"] = "http://mock-url.com"
 os.environ["SUPABASE_SERVICE_ROLE_KEY"] = "mock-key"
+os.environ["GROQ_API_KEY"] = "mock-groq-key"
+os.environ["GOOGLE_MAPS_API_KEY"] = "mock-google-maps-key"
 os.environ["APP_ENV"] = "testing"
 
 import pytest

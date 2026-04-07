@@ -1,10 +1,10 @@
-﻿import uuid
+import uuid
 
 from app.core.session import get_db
 from app.models.notification import Notification
 
 
-def test_listar_notificacoes_usuario(client, db):
+def test_given_user_with_notifications_when_list_then_returns_all(client, db):
     user_id = uuid.uuid4()
     db.add(Notification(usuario_id=user_id, titulo="Nota 1", mensagem="Corpo 1"))
     db.commit()
@@ -17,7 +17,7 @@ def test_listar_notificacoes_usuario(client, db):
     assert data[0]["titulo"] == "Nota 1"
 
 
-def test_listar_notificacoes_usuario_sem_notificacoes(client, db):
+def test_given_user_without_notifications_when_list_then_returns_empty(client, db):
     user_id = uuid.uuid4()
 
     response = client.get(f"/notifications/?usuario_id={user_id}")
@@ -26,7 +26,7 @@ def test_listar_notificacoes_usuario_sem_notificacoes(client, db):
     assert response.json() == []
 
 
-def test_contar_notificacoes_nao_lidas(client, db):
+def test_given_user_with_mixed_read_status_when_count_unread_then_returns_correct(client, db):
     user_id = uuid.uuid4()
     db.add(Notification(usuario_id=user_id, titulo="N1", mensagem="C1", lida=False))
     db.add(Notification(usuario_id=user_id, titulo="N2", mensagem="C2", lida=True))
@@ -38,7 +38,7 @@ def test_contar_notificacoes_nao_lidas(client, db):
     assert response.json()["unread_count"] == 1
 
 
-def test_contar_notificacoes_nao_lidas_zerado(client, db):
+def test_given_user_without_notifications_when_count_unread_then_returns_zero(client, db):
     user_id = uuid.uuid4()
 
     response = client.get(f"/notifications/count?usuario_id={user_id}")
@@ -47,7 +47,7 @@ def test_contar_notificacoes_nao_lidas_zerado(client, db):
     assert response.json()["unread_count"] == 0
 
 
-def test_marcar_como_lida(client, db):
+def test_given_unread_notification_when_mark_read_then_status_changes(client, db):
     user_id = uuid.uuid4()
     notif = Notification(usuario_id=user_id, titulo="N1", mensagem="C1", lida=False)
     db.add(notif)
@@ -61,7 +61,7 @@ def test_marcar_como_lida(client, db):
     assert notif.lida is True
 
 
-def test_marcar_como_lida_notificacao_inexistente(client, db):
+def test_given_nonexistent_notification_when_mark_read_then_returns_404(client, db):
     user_id = uuid.uuid4()
     fake_id = uuid.uuid4()
 
@@ -70,7 +70,7 @@ def test_marcar_como_lida_notificacao_inexistente(client, db):
     assert response.status_code == 404
 
 
-def test_marcar_como_lida_notificacao_de_outro_usuario(client, db):
+def test_given_other_user_notification_when_mark_read_then_returns_404(client, db):
     user_id = uuid.uuid4()
     outro_user_id = uuid.uuid4()
     notif = Notification(usuario_id=outro_user_id, titulo="N1", mensagem="C1", lida=False)
@@ -83,7 +83,7 @@ def test_marcar_como_lida_notificacao_de_outro_usuario(client, db):
     assert response.status_code == 404
 
 
-def test_marcar_todas_como_lidas(client, db):
+def test_given_multiple_unread_when_mark_all_read_then_all_updated(client, db):
     user_id = uuid.uuid4()
     db.add(Notification(usuario_id=user_id, titulo="N1", mensagem="C1", lida=False))
     db.add(Notification(usuario_id=user_id, titulo="N2", mensagem="C2", lida=False))
@@ -95,7 +95,7 @@ def test_marcar_todas_como_lidas(client, db):
     assert "2 notificações marcadas como lidas" in response.json()["message"]
 
 
-def test_marcar_todas_como_lidas_sem_notificacoes(client, db):
+def test_given_no_unread_when_mark_all_read_then_returns_zero(client, db):
     user_id = uuid.uuid4()
 
     response = client.patch(f"/notifications/read-all?usuario_id={user_id}")
@@ -104,13 +104,13 @@ def test_marcar_todas_como_lidas_sem_notificacoes(client, db):
     assert "0 notificações marcadas como lidas" in response.json()["message"]
 
 
-def test_health_check(client, db):
+def test_given_health_endpoint_when_get_then_returns_ok(client, db):
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 
 
-def test_get_db_yields_session():
+def test_given_get_db_generator_when_called_then_yields_session():
     gen = get_db()
     db = next(gen)
     assert db is not None
@@ -120,6 +120,6 @@ def test_get_db_yields_session():
         pass
 
 
-def test_listar_usuarios(client, db):
+def test_given_users_endpoint_when_list_then_returns_success(client, db):
     response = client.get("/users/")
     assert response.status_code == 200
