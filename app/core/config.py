@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     secret_key: str = "dev-secret-key"
     app_debug: bool = True
+    nominatim_user_agent: str = "mandaca-backend/1.0 (mandacaapp@ufrpe.br)"
 
     model_config = SettingsConfigDict(
         env_file=".env",
