@@ -56,7 +56,7 @@ async def geocode_address(endereco: str) -> tuple[float, float]:
 
     if not results:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=_NOT_FOUND_MSG,
         )
 
