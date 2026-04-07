@@ -1,9 +1,15 @@
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import (
+    DuplicateEnterpriseNameError,
+    EnterpriseNotFoundError,
+    UserAlreadyHasEnterpriseError,
+    UserAlreadyLinkedError,
+    UserNotFoundError,
+)
 from app.models.enterprise import Enterprise
 from app.models.user import User
 from app.schemas.enterprises import (
@@ -17,19 +23,23 @@ from app.services.geocoding_service import geocode_address
 
 
 def get_by_id(enterprise_id: UUID, db: Session) -> Enterprise:
-    """Busca uma empresa pelo ID ou lança 404."""
-    enterprise = db.get(Enterprise, enterprise_id)
-    if not enterprise:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa não encontrada",
+    """Busca uma empresa ativa pelo ID ou lança EnterpriseNotFoundError."""
+    enterprise = db.execute(
+        select(Enterprise).where(
+            Enterprise.id_empresa == enterprise_id,
+            Enterprise.deleted_at.is_(None),
         )
+    ).scalar_one_or_none()
+    if not enterprise:
+        raise EnterpriseNotFoundError(enterprise_id)
     return enterprise
 
 
 def list_all(db: Session) -> list[Enterprise]:
-    """Retorna todas as empresas."""
-    return list(db.execute(select(Enterprise)).scalars().all())
+    """Retorna todas as empresas ativas."""
+    return list(
+        db.execute(select(Enterprise).where(Enterprise.deleted_at.is_(None))).scalars().all()
+    )
 
 
 def get_overview(enterprise_id: UUID, db: Session) -> EnterpriseOverviewResponse:
@@ -51,25 +61,19 @@ def get_overview(enterprise_id: UUID, db: Session) -> EnterpriseOverviewResponse
 async def create(payload: EnterpriseCreate, db: Session) -> Enterprise:
     """Cria uma nova empresa validando unicidade de nome, usuário e geocodificando o endereço."""
     existing = db.execute(
-        select(Enterprise).where(Enterprise.nome == payload.nome)
+        select(Enterprise).where(
+            Enterprise.nome == payload.nome,
+            Enterprise.deleted_at.is_(None),
+        )
     ).scalar_one_or_none()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Já existe uma empresa com esse nome",
-        )
+        raise DuplicateEnterpriseNameError(payload.nome)
 
     user = db.get(User, payload.usuario_id)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuário vinculado não encontrado",
-        )
+        raise UserNotFoundError(payload.usuario_id)
     if user.empresa is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Este usuário já possui uma empresa vinculada",
-        )
+        raise UserAlreadyHasEnterpriseError(payload.usuario_id)
 
     lat, lng = None, None
     if payload.endereco:
@@ -102,27 +106,19 @@ async def update(enterprise_id: UUID, payload: EnterpriseUpdate, db: Session) ->
             select(Enterprise).where(
                 Enterprise.nome == payload.nome,
                 Enterprise.id_empresa != enterprise_id,
+                Enterprise.deleted_at.is_(None),
             )
         ).scalar_one_or_none()
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Já existe uma empresa com esse nome",
-            )
+            raise DuplicateEnterpriseNameError(payload.nome)
         enterprise.nome = payload.nome
 
     if payload.usuario_id is not None and payload.usuario_id != enterprise.usuario_id:
         user = db.get(User, payload.usuario_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuário vinculado não encontrado",
-            )
+            raise UserNotFoundError(payload.usuario_id)
         if user.empresa is not None and user.empresa.id_empresa != enterprise.id_empresa:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Este usuário já está vinculado a outra empresa",
-            )
+            raise UserAlreadyLinkedError(payload.usuario_id)
         enterprise.usuario_id = payload.usuario_id
 
     if payload.especialidade is not None:

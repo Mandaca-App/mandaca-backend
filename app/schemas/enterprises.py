@@ -1,29 +1,29 @@
 from datetime import time
-from typing import Optional
+from typing import Annotated, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 
 class EnterpriseCreate(BaseModel):
-    nome: str
-    especialidade: Optional[str] = None
-    endereco: Optional[str] = None
-    historia: Optional[str] = None
+    nome: Annotated[str, StringConstraints(max_length=255)]
+    especialidade: Annotated[Optional[str], StringConstraints(max_length=100)] = None
+    endereco: Annotated[Optional[str], StringConstraints(max_length=255)] = None
+    historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
     hora_abrir: Optional[time] = None
     hora_fechar: Optional[time] = None
-    telefone: Optional[str] = None
+    telefone: Annotated[Optional[str], StringConstraints(max_length=20)] = None
     usuario_id: UUID
 
 
 class EnterpriseUpdate(BaseModel):
-    nome: Optional[str] = None
-    especialidade: Optional[str] = None
-    endereco: Optional[str] = None
-    historia: Optional[str] = None
+    nome: Annotated[Optional[str], StringConstraints(max_length=255)] = None
+    especialidade: Annotated[Optional[str], StringConstraints(max_length=100)] = None
+    endereco: Annotated[Optional[str], StringConstraints(max_length=255)] = None
+    historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
     hora_abrir: Optional[time] = None
     hora_fechar: Optional[time] = None
-    telefone: Optional[str] = None
+    telefone: Annotated[Optional[str], StringConstraints(max_length=20)] = None
     usuario_id: Optional[UUID] = None
 
 

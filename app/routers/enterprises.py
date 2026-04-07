@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 import app.services.enterprise_service as enterprise_service
 from app.core.session import get_db
-from app.models.enterprise import Enterprise
 from app.schemas.enterprises import (
     EnterpriseCreate,
     EnterpriseOverviewResponse,
@@ -26,7 +25,7 @@ def get_enterprise_overview(
 
 
 @router.get("/", response_model=list[EnterpriseResponse])
-def list_enterprises(db: Session = Depends(get_db)) -> list[Enterprise]:
+def list_enterprises(db: Session = Depends(get_db)) -> list[EnterpriseResponse]:
     return enterprise_service.list_all(db)
 
 
@@ -42,7 +41,7 @@ def enterprise_percentage(
 def get_enterprise(
     enterprise_id: UUID,
     db: Session = Depends(get_db),
-) -> Enterprise:
+) -> EnterpriseResponse:
     return enterprise_service.get_by_id(enterprise_id, db)
 
 
@@ -50,7 +49,7 @@ def get_enterprise(
 async def create_enterprise(
     payload: EnterpriseCreate,
     db: Session = Depends(get_db),
-) -> Enterprise:
+) -> EnterpriseResponse:
     return await enterprise_service.create(payload, db)
 
 
@@ -59,5 +58,5 @@ async def update_enterprise(
     enterprise_id: UUID,
     payload: EnterpriseUpdate,
     db: Session = Depends(get_db),
-) -> Enterprise:
+) -> EnterpriseResponse:
     return await enterprise_service.update(enterprise_id, payload, db)
