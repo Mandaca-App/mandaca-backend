@@ -12,3 +12,5 @@ httpx
 groq>=0.9.0
 supabase
 python-multipart
+ruff==0.15.9
+black==24.4.2
