@@ -8,6 +8,7 @@ import groq as groq_sdk
 from fastapi import HTTPException, UploadFile, status
 from groq import AsyncGroq
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -95,7 +96,12 @@ async def process_audio_registration(
     texto_bruto = await _transcribe_audio(file_content, file, client)
     campos = await _extract_fields(texto_bruto, client)
 
-    enterprise = db.query(Enterprise).filter(Enterprise.usuario_id == usuario_id).first()
+    enterprise = db.execute(
+        select(Enterprise).where(
+            Enterprise.usuario_id == usuario_id,
+            Enterprise.deleted_at.is_(None),
+        )
+    ).scalar_one_or_none()
 
     novo_endereco: str | None = campos.get("endereco")
     lat: float | None = None
