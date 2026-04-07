@@ -18,6 +18,7 @@ import groq as groq_sdk
 import pytest
 from fastapi import HTTPException, UploadFile
 
+from app.core.exceptions import GeocodingUnavailableError
 from app.models.enterprise import Enterprise
 from app.schemas.transcriptions import EnterpriseFromAudioResponse  # noqa: F401
 from app.services.transcription_service import (
@@ -79,7 +80,7 @@ def _mock_groq_client(transcription: str = FAKE_TRANSCRIPTION, extracted: dict =
 
 def _mock_db(extracted: dict = FAKE_EXTRACTED, existing: Enterprise | None = None) -> MagicMock:
     db = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = existing
+    db.execute.return_value.scalar_one_or_none.return_value = existing
 
     def _fake_refresh(obj):
         obj.id_empresa = FAKE_EMPRESA_ID
@@ -216,6 +217,32 @@ async def test_given_existing_enterprise_when_processed_then_updates_fields():
     db.add.assert_not_called()
     db.commit.assert_called_once()
     assert record.nome == "Dona Francisca"
+
+
+@pytest.mark.anyio
+async def test_given_geocoding_fails_when_audio_processed_then_persists_without_coords():
+    # GIVEN — endereco extraido mas geocoder indisponivel; deve continuar sem coordenadas
+    file = _make_upload_file()
+    db = _mock_db()
+
+    with (
+        patch("app.services.transcription_service.AsyncGroq", return_value=_mock_groq_client()),
+        patch(
+            "app.services.transcription_service.geocode_address",
+            new=AsyncMock(side_effect=GeocodingUnavailableError()),
+        ),
+    ):
+        # WHEN
+        record = await process_audio_registration(file, FAKE_USUARIO_ID, db)
+
+    # THEN — empresa criada sem lat/lng, sem excecao propagada
+    assert record.nome == "Dona Francisca"
+    assert record.endereco == "Rua do Cruzeiro, 15, Cariri"
+    db.add.assert_called_once()
+    db.commit.assert_called_once()
+    added = db.add.call_args[0][0]
+    assert added.latitude is None
+    assert added.longitude is None
 
 
 # ---------------------------------------------------------------------------
