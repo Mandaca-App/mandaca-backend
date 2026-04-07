@@ -35,26 +35,29 @@ _BAD_REQUEST_TYPES = (
 )
 
 
+async def _handle_404(request: Request, exc: MandacaError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+async def _handle_400(request: Request, exc: MandacaError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+async def _handle_422(request: Request, exc: MandacaError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+async def _handle_503(request: Request, exc: MandacaError) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
 def _register_handlers(fastapi_app: FastAPI) -> None:
     for exc_class in _NOT_FOUND_TYPES:
-
-        @fastapi_app.exception_handler(exc_class)
-        async def _404(request: Request, exc: MandacaError) -> JSONResponse:
-            return JSONResponse(status_code=404, content={"detail": str(exc)})
-
+        fastapi_app.add_exception_handler(exc_class, _handle_404)
     for exc_class in _BAD_REQUEST_TYPES:
-
-        @fastapi_app.exception_handler(exc_class)
-        async def _400(request: Request, exc: MandacaError) -> JSONResponse:
-            return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-    @fastapi_app.exception_handler(AddressNotFoundError)
-    async def _422(request: Request, exc: AddressNotFoundError) -> JSONResponse:
-        return JSONResponse(status_code=422, content={"detail": str(exc)})
-
-    @fastapi_app.exception_handler(GeocodingUnavailableError)
-    async def _503(request: Request, exc: GeocodingUnavailableError) -> JSONResponse:
-        return JSONResponse(status_code=503, content={"detail": str(exc)})
+        fastapi_app.add_exception_handler(exc_class, _handle_400)
+    fastapi_app.add_exception_handler(AddressNotFoundError, _handle_422)
+    fastapi_app.add_exception_handler(GeocodingUnavailableError, _handle_503)
 
 
 _register_handlers(app)
