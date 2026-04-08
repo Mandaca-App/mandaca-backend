@@ -6,7 +6,6 @@ Estratégia: cliente Gemini completamente mockado.
 Não há chamadas de rede nestes testes.
 """
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest

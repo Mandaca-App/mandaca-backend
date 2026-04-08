@@ -4,8 +4,10 @@ from google import genai
 from pydantic import BaseModel, ValidationError
 
 from app.models.assessment import TipoAvaliacao
+from app.core.config import settings
 
-client = genai.Client()
+def get_gemini_client():
+    return genai.Client(api_key=settings.gemini_api_key)
 
 
 class AssessmentClassification(BaseModel):
@@ -13,6 +15,7 @@ class AssessmentClassification(BaseModel):
 
 
 def classify_assessment_text(texto: str) -> TipoAvaliacao:
+    client = get_gemini_client()
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
