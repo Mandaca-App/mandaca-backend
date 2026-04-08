@@ -48,6 +48,12 @@ _ASSESSMENTS_LIST = [
 def db_mock():
     db = MagicMock()
 
+    def refresh_side_effect(obj):
+        if getattr(obj, "id_avaliacao", None) is None:
+            obj.id_avaliacao = FAKE_ID
+
+    db.refresh.side_effect = refresh_side_effect
+
     def override_get_db():
         yield db
 
@@ -88,8 +94,8 @@ def test_given_assessment_exists_when_get_by_id_then_returns_200(db_mock):
 def test_given_valid_payload_when_create_then_returns_201(db_mock):
     # GIVEN
     db_mock.get.side_effect = [
-        SimpleNamespace(id_usuario=USER_ID),  # usuário existe
-        SimpleNamespace(id_empresa=ENTERPRISE_ID),  # empresa existe
+        SimpleNamespace(id_usuario=USER_ID),
+        SimpleNamespace(id_empresa=ENTERPRISE_ID),
     ]
 
     with patch(
@@ -109,6 +115,7 @@ def test_given_valid_payload_when_create_then_returns_201(db_mock):
     # THEN
     assert response.status_code == 201
     data = response.json()
+    assert data["id_avaliacao"] == str(FAKE_ID)
     assert data["texto"] == "Muito bom!"
     assert data["tipo_avaliacao"] == "positiva"
     assert data["usuario_id"] == str(USER_ID)
