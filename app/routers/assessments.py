@@ -10,7 +10,7 @@ from app.models.assessment import Assessment
 from app.models.enterprise import Enterprise
 from app.models.user import User
 from app.schemas.assessments import AssessmentCreate, AssessmentResponse, AssessmentUpdate
-from app.services.assessment_classifier import classify_assessment_text
+from app.services.assessment_service import classify_assessment_text
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 
