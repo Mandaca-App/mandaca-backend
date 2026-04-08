@@ -3,8 +3,9 @@ from typing import Literal
 from google import genai
 from pydantic import BaseModel, ValidationError
 
-from app.models.assessment import TipoAvaliacao
 from app.core.config import settings
+from app.models.assessment import TipoAvaliacao
+
 
 def get_gemini_client():
     return genai.Client(api_key=settings.gemini_api_key)

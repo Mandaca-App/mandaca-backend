@@ -88,8 +88,8 @@ def test_given_assessment_exists_when_get_by_id_then_returns_200(db_mock):
 def test_given_valid_payload_when_create_then_returns_201(db_mock):
     # GIVEN
     db_mock.get.side_effect = [
-        SimpleNamespace(id_usuario=USER_ID),      # usuário existe
-        SimpleNamespace(id_empresa=ENTERPRISE_ID), # empresa existe
+        SimpleNamespace(id_usuario=USER_ID),  # usuário existe
+        SimpleNamespace(id_empresa=ENTERPRISE_ID),  # empresa existe
     ]
 
     with patch(

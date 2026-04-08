@@ -28,6 +28,7 @@ FAKE_TEXT_DUVIDA = "Vocês funcionam aos domingos?"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_response(json_text: str) -> MagicMock:
     response = MagicMock()
     response.text = json_text
@@ -37,6 +38,7 @@ def _mock_response(json_text: str) -> MagicMock:
 # ---------------------------------------------------------------------------
 # classify_assessment_text
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     ("texto", "tipo_avaliacao"),
@@ -50,9 +52,7 @@ def _mock_response(json_text: str) -> MagicMock:
 )
 def test_given_valid_model_output_when_classify_then_returns_enum(texto, tipo_avaliacao):
     # GIVEN
-    response = _mock_response(
-        f'{{"tipo_avaliacao": "{tipo_avaliacao.value}"}}'
-    )
+    response = _mock_response(f'{{"tipo_avaliacao": "{tipo_avaliacao.value}"}}')
 
     with patch(
         "app.services.assessment_service.client.models.generate_content",

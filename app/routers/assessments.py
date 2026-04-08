@@ -157,6 +157,7 @@ def delete_assessment(
     db.commit()
     return None
 
+
 @router.get(
     "/by-enterprise/{empresa_id}",
     response_model=list[AssessmentResponse],
