@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     secret_key: str = "dev-secret-key"
     app_debug: bool = True
+    gemini_api_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
