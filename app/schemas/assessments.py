@@ -7,7 +7,7 @@ from app.models.assessment import TipoAvaliacao
 
 
 class AssessmentCreate(BaseModel):
-    texto: Annotated[Optional[str], StringConstraints(max_length=500)]
+    texto: Annotated[str, StringConstraints(min_length=1, max_length=500)]
     usuario_id: UUID
     empresa_id: UUID
 
@@ -22,7 +22,7 @@ class AssessmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id_avaliacao: UUID
-    texto: Optional[str] = None
+    texto: str
     tipo_avaliacao: TipoAvaliacao
     usuario_id: UUID
     empresa_id: UUID
