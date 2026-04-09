@@ -1,5 +1,5 @@
 """
-Testes unitários para assessment_service.
+Testes unitários para AssessmentService.
 
 Foco: lógica de negócio da camada de service isolada.
 Estratégia: cliente Gemini completamente mockado.
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.models.assessment import TipoAvaliacao
-from app.services import assessment_service
+from app.services.assessment_service import AssessmentService
 
 # ---------------------------------------------------------------------------
 # Constantes
@@ -58,14 +58,15 @@ def _mock_gemini_client(response_text: str) -> MagicMock:
 )
 def test_given_valid_model_output_when_classify_then_returns_enum(texto, tipo_avaliacao):
     # GIVEN
+    service = AssessmentService()
     client = _mock_gemini_client(f'{{"tipo_avaliacao": "{tipo_avaliacao.value}"}}')
 
     with patch(
-        "app.services.assessment_service.get_gemini_client",
+        "app.services.assessment_service.AssessmentService._get_gemini_client",
         return_value=client,
     ) as mock_get_client:
         # WHEN
-        result = assessment_service.classify_assessment_text(texto)
+        result = service.classify_assessment_text(texto)
 
     # THEN
     mock_get_client.assert_called_once()
@@ -75,26 +76,28 @@ def test_given_valid_model_output_when_classify_then_returns_enum(texto, tipo_av
 
 def test_given_invalid_json_when_classify_then_raises_runtime_error():
     # GIVEN
+    service = AssessmentService()
     client = _mock_gemini_client("isso nao e json")
 
     with patch(
-        "app.services.assessment_service.get_gemini_client",
+        "app.services.assessment_service.AssessmentService._get_gemini_client",
         return_value=client,
     ):
         # WHEN / THEN
         with pytest.raises(RuntimeError, match="Falha ao classificar a avaliação."):
-            assessment_service.classify_assessment_text(FAKE_TEXT_POSITIVO)
+            service.classify_assessment_text(FAKE_TEXT_POSITIVO)
 
 
 def test_given_client_error_when_classify_then_raises_runtime_error():
     # GIVEN
+    service = AssessmentService()
     client = MagicMock()
     client.models.generate_content.side_effect = Exception("erro da api")
 
     with patch(
-        "app.services.assessment_service.get_gemini_client",
+        "app.services.assessment_service.AssessmentService._get_gemini_client",
         return_value=client,
     ):
         # WHEN / THEN
         with pytest.raises(RuntimeError, match="Falha ao classificar a avaliação."):
-            assessment_service.classify_assessment_text(FAKE_TEXT_POSITIVO)
+            service.classify_assessment_text(FAKE_TEXT_POSITIVO)
