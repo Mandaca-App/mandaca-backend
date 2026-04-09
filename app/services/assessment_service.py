@@ -1,11 +1,11 @@
 from typing import Literal
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from google import genai
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
 
 from app.core.config import settings
 from app.models.assessment import Assessment, TipoAvaliacao
