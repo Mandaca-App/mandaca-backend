@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.core.config import settings
 from app.core.session import Base
 
-import app.models.user, app.models.assessment,app.models.enterprise,app.models.menu,app.models.photo,app.models.reservation
+import app.models.user, app.models.assessment, app.models.enterprise, app.models.menu, app.models.photo, app.models.reservation, app.models.notification
 
 config = context.config
 
@@ -36,7 +36,7 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-print(repr(settings.database_url))
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -76,9 +76,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
