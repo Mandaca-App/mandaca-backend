@@ -155,18 +155,6 @@ def test_given_missing_menu_when_get_by_id_then_raises_404():
     assert exc_info.value.status_code == 404
 
 
-def test_given_inactive_menu_when_get_by_id_then_raises_404():
-    # GIVEN
-    db = _mock_db()
-    db.execute.return_value.scalar_one_or_none.return_value = None  # status=False filtered out
-
-    # WHEN / THEN
-    with pytest.raises(HTTPException) as exc_info:
-        menu_service.get_by_id(FAKE_MENU_ID, db)
-
-    assert exc_info.value.status_code == 404
-
-
 # ---------------------------------------------------------------------------
 # list_all
 # ---------------------------------------------------------------------------
