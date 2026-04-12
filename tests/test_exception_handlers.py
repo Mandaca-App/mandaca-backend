@@ -17,6 +17,10 @@ from app.core.exceptions import (
     AudioServiceTimeoutError,
     AudioTooLargeError,
     AudioTranscriptionError,
+    ChatRateLimitError,
+    ChatServiceConnectionError,
+    ChatServiceError,
+    ChatServiceTimeoutError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     GeocodingUnavailableError,
@@ -26,6 +30,7 @@ from app.core.exceptions import (
     UserNotFoundError,
 )
 from app.main import app
+from app.services.chat_service import ChatService
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -259,6 +264,62 @@ def test_given_timeout_when_transcribing_then_returns_504():
     # THEN
     assert response.status_code == 504
     assert "demorou demais" in response.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Handlers de chat (429, 502, 504)
+# ---------------------------------------------------------------------------
+
+_CHAT_POST = "/chat/message"
+_CHAT_BODY = {"enterprise_id": FAKE_UUID, "message": "Como melhorar minhas vendas?"}
+
+
+def test_given_chat_rate_limit_when_sending_then_returns_429():
+    # GIVEN
+    with patch.object(ChatService, "send_message", new=AsyncMock(side_effect=ChatRateLimitError())):
+        # WHEN
+        response = client.post(_CHAT_POST, json=_CHAT_BODY)
+
+    # THEN
+    assert response.status_code == 429
+    assert "tente novamente" in response.json()["detail"].lower()
+
+
+def test_given_chat_timeout_when_sending_then_returns_504():
+    # GIVEN
+    with patch.object(
+        ChatService, "send_message", new=AsyncMock(side_effect=ChatServiceTimeoutError())
+    ):
+        # WHEN
+        response = client.post(_CHAT_POST, json=_CHAT_BODY)
+
+    # THEN
+    assert response.status_code == 504
+    assert "demorou demais" in response.json()["detail"].lower()
+
+
+def test_given_chat_connection_error_when_sending_then_returns_502():
+    # GIVEN
+    with patch.object(
+        ChatService, "send_message", new=AsyncMock(side_effect=ChatServiceConnectionError())
+    ):
+        # WHEN
+        response = client.post(_CHAT_POST, json=_CHAT_BODY)
+
+    # THEN
+    assert response.status_code == 502
+    assert "conectar" in response.json()["detail"].lower()
+
+
+def test_given_chat_api_status_error_when_sending_then_returns_502():
+    # GIVEN
+    with patch.object(ChatService, "send_message", new=AsyncMock(side_effect=ChatServiceError())):
+        # WHEN
+        response = client.post(_CHAT_POST, json=_CHAT_BODY)
+
+    # THEN
+    assert response.status_code == 502
+    assert "inesperado" in response.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------
