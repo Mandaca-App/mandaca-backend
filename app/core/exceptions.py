@@ -88,3 +88,28 @@ class AudioServiceTimeoutError(MandacaError):
 class AudioTranscriptionError(MandacaError):
     def __init__(self, detail: str) -> None:
         super().__init__(f"Falha na transcrição do áudio: {detail}")
+
+
+# ---------------------------------------------------------------------------
+# Exceções de chat (chat_service)
+# ---------------------------------------------------------------------------
+
+
+class ChatRateLimitError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Limite de requisições da API de chat atingido. Tente novamente.")
+
+
+class ChatServiceTimeoutError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("A API de chat demorou demais para responder. Tente novamente.")
+
+
+class ChatServiceConnectionError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Não foi possível conectar à API de chat. Tente novamente.")
+
+
+class ChatServiceError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Erro inesperado na API de chat. Tente novamente.")
