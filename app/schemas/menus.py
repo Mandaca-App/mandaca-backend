@@ -12,7 +12,7 @@ class MenuCreate(BaseModel):
     historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
     preco: Decimal
     categoria: CategoriaCardapio
-    status: bool = True
+    status: bool
     empresa_id: UUID
 
 

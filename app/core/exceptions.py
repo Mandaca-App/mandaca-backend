@@ -113,3 +113,14 @@ class ChatServiceConnectionError(MandacaError):
 class ChatServiceError(MandacaError):
     def __init__(self) -> None:
         super().__init__("Erro inesperado na API de chat. Tente novamente.")
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Menu (menu_service)
+# ---------------------------------------------------------------------------
+
+
+class MenuNotFoundError(MandacaError):
+    def __init__(self, menu_id: UUID | str) -> None:
+        super().__init__(f"Cardápio não encontrado: {menu_id}")
+        self.menu_id = menu_id

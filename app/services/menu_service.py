@@ -1,10 +1,9 @@
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import EnterpriseNotFoundError
+from app.core.exceptions import EnterpriseNotFoundError, MenuNotFoundError
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
 from app.schemas.menus import MenuCreate, MenuUpdate
@@ -29,7 +28,7 @@ def get_by_enterprise(enterprise_id: UUID, db: Session) -> list[Menu]:
 
 
 def get_by_id(menu_id: UUID, db: Session) -> Menu:
-    """Busca um cardápio ativo pelo ID ou lança 404."""
+    """Busca um cardápio ativo pelo ID ou lança MenuNotFoundError."""
     menu = db.execute(
         select(Menu).where(
             Menu.id_cardapio == menu_id,
@@ -38,10 +37,7 @@ def get_by_id(menu_id: UUID, db: Session) -> Menu:
     ).scalar_one_or_none()
 
     if not menu:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cardápio {menu_id} não encontrado.",
-        )
+        raise MenuNotFoundError(menu_id)
 
     return menu
 
@@ -62,7 +58,7 @@ def create(payload: MenuCreate, db: Session) -> Menu:
         historia=payload.historia,
         preco=payload.preco,
         categoria=payload.categoria,
-        status=payload.status,
+        status=True,
         empresa_id=payload.empresa_id,
     )
 
@@ -100,12 +96,6 @@ def update(menu_id: UUID, payload: MenuUpdate, db: Session) -> Menu:
 
 def delete(menu_id: UUID, db: Session) -> None:
     """Remove logicamente um cardápio, marcando status como False."""
-    menu = db.get(Menu, menu_id)
-    if not menu or menu.status is False:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cardápio não encontrado",
-        )
-
+    menu = get_by_id(menu_id, db)
     menu.status = False
     db.commit()
