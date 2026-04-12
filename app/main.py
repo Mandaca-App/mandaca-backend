@@ -23,7 +23,16 @@ from app.core.exceptions import (
     UserAlreadyLinkedError,
     UserNotFoundError,
 )
-from app.routers import assessments, chat, enterprises, notifications, photos, transcriptions, users
+from app.routers import (
+    assessments,
+    chat,
+    enterprises,
+    menus,
+    notifications,
+    photos,
+    transcriptions,
+    users,
+)
 
 app = FastAPI(title="Meu Projeto", version="0.1.0")
 
@@ -34,6 +43,7 @@ app.include_router(notifications.router)
 app.include_router(transcriptions.router)
 app.include_router(assessments.router)
 app.include_router(chat.router)
+app.include_router(menus.router)
 
 
 # ---------------------------------------------------------------------------
