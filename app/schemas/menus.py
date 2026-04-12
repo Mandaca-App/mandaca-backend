@@ -31,7 +31,7 @@ class MenuResponse(BaseModel):
     id_cardapio: UUID
     descricao: Optional[str] = None
     historia: Optional[str] = None
-    preco: Decimal = Field(..., example=Decimal("8.50"))
+    preco: Decimal = Field(..., json_schema_extra={"example": Decimal("8.50")})
     categoria: CategoriaCardapio
     status: bool
     empresa_id: UUID
