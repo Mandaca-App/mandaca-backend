@@ -10,6 +10,10 @@ from app.core.exceptions import (
     AudioServiceTimeoutError,
     AudioTooLargeError,
     AudioTranscriptionError,
+    ChatRateLimitError,
+    ChatServiceConnectionError,
+    ChatServiceError,
+    ChatServiceTimeoutError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     GeocodingUnavailableError,
@@ -19,7 +23,7 @@ from app.core.exceptions import (
     UserAlreadyLinkedError,
     UserNotFoundError,
 )
-from app.routers import assessments, enterprises, notifications, photos, transcriptions, users
+from app.routers import assessments, chat, enterprises, notifications, photos, transcriptions, users
 
 app = FastAPI(title="Meu Projeto", version="0.1.0")
 
@@ -29,6 +33,7 @@ app.include_router(photos.router)
 app.include_router(notifications.router)
 app.include_router(transcriptions.router)
 app.include_router(assessments.router)
+app.include_router(chat.router)
 
 
 # ---------------------------------------------------------------------------
@@ -41,7 +46,12 @@ _BAD_REQUEST_TYPES = (
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
 )
-_BAD_GATEWAY_TYPES = (AudioServiceConnectionError, AudioTranscriptionError)
+_BAD_GATEWAY_TYPES = (
+    AudioServiceConnectionError,
+    AudioTranscriptionError,
+    ChatServiceConnectionError,
+    ChatServiceError,
+)
 
 
 async def _handle_400(request: Request, exc: MandacaError) -> JSONResponse:
@@ -93,6 +103,8 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(UnsupportedAudioFormatError, _handle_415)
     fastapi_app.add_exception_handler(AudioRateLimitError, _handle_429)
     fastapi_app.add_exception_handler(AudioServiceTimeoutError, _handle_504)
+    fastapi_app.add_exception_handler(ChatRateLimitError, _handle_429)
+    fastapi_app.add_exception_handler(ChatServiceTimeoutError, _handle_504)
 
 
 _register_handlers(app)
