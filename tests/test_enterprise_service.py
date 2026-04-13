@@ -416,6 +416,41 @@ async def test_given_schedule_and_phone_when_update_then_persists_fields():
 
 
 # ---------------------------------------------------------------------------
+# delete
+# ---------------------------------------------------------------------------
+
+
+def test_given_existing_enterprise_when_delete_then_removes_from_db():
+    # GIVEN
+    db = _mock_db()
+    enterprise = _make_enterprise()
+
+    with patch("app.services.enterprise_service.get_by_id", return_value=enterprise):
+        # WHEN
+        enterprise_service.delete(FAKE_ENTERPRISE_ID, db)
+
+    # THEN
+    db.delete.assert_called_once_with(enterprise)
+    db.commit.assert_called_once()
+
+
+def test_given_missing_enterprise_when_delete_then_raises_not_found():
+    # GIVEN
+    db = _mock_db()
+
+    with patch(
+        "app.services.enterprise_service.get_by_id",
+        side_effect=EnterpriseNotFoundError(FAKE_ENTERPRISE_ID),
+    ):
+        # WHEN / THEN
+        with pytest.raises(EnterpriseNotFoundError):
+            enterprise_service.delete(FAKE_ENTERPRISE_ID, db)
+
+    db.delete.assert_not_called()
+    db.commit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # get_percentage
 # ---------------------------------------------------------------------------
 

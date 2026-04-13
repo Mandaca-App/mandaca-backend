@@ -113,3 +113,16 @@ def test_given_valid_payload_when_update_then_returns_200():
     # THEN
     assert response.status_code == 200
     assert response.json()["id_empresa"] == str(FAKE_ID)
+
+
+def test_given_enterprise_exists_when_delete_then_returns_204():
+    # GIVEN
+    with patch(
+        "app.services.enterprise_service.delete",
+        return_value=None,
+    ):
+        # WHEN
+        response = client.delete(f"/enterprises/{FAKE_ID}")
+
+    # THEN
+    assert response.status_code == 204
