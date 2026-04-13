@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 import groq as groq_sdk
 import pytest
@@ -12,6 +13,7 @@ from app.core.exceptions import (
 from app.services.chat_service import _CHAT_MODEL, ChatService
 
 FAKE_REPLY = "Para melhorar suas vendas, comece identificando seu público-alvo."
+FAKE_ENTERPRISE_ID = uuid.uuid4()
 
 
 def _mock_groq_client(reply: str | None = FAKE_REPLY) -> MagicMock:
@@ -22,6 +24,13 @@ def _mock_groq_client(reply: str | None = FAKE_REPLY) -> MagicMock:
     return client
 
 
+def _mock_db() -> MagicMock:
+    db = MagicMock()
+    db.add = MagicMock()
+    db.commit = MagicMock()
+    return db
+
+
 # ---------------------------------------------------------------------------
 # Happy path
 # ---------------------------------------------------------------------------
@@ -30,11 +39,11 @@ def _mock_groq_client(reply: str | None = FAKE_REPLY) -> MagicMock:
 @pytest.mark.anyio
 async def test_given_valid_message_when_sent_then_returns_reply():
     # GIVEN
-    service = ChatService()
+    service = ChatService(groq_client=_mock_groq_client())
+    db = _mock_db()
 
     # WHEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=_mock_groq_client()):
-        result = await service.send_message("Como melhorar minhas vendas?")
+    result = await service.send_message("Como melhorar minhas vendas?", FAKE_ENTERPRISE_ID, db)
 
     # THEN
     assert result == FAKE_REPLY
@@ -43,12 +52,12 @@ async def test_given_valid_message_when_sent_then_returns_reply():
 @pytest.mark.anyio
 async def test_given_valid_message_when_sent_then_uses_versatile_model():
     # GIVEN
-    service = ChatService()
     mock_client = _mock_groq_client()
+    service = ChatService(groq_client=mock_client)
+    db = _mock_db()
 
     # WHEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=mock_client):
-        await service.send_message("Qual o melhor horário para abrir?")
+    await service.send_message("Qual o melhor horário para abrir?", FAKE_ENTERPRISE_ID, db)
 
     # THEN
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
@@ -58,12 +67,12 @@ async def test_given_valid_message_when_sent_then_uses_versatile_model():
 @pytest.mark.anyio
 async def test_given_valid_message_when_sent_then_includes_system_prompt():
     # GIVEN
-    service = ChatService()
     mock_client = _mock_groq_client()
+    service = ChatService(groq_client=mock_client)
+    db = _mock_db()
 
     # WHEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=mock_client):
-        await service.send_message("Como formalizar meu negócio?")
+    await service.send_message("Como formalizar meu negócio?", FAKE_ENTERPRISE_ID, db)
 
     # THEN
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
@@ -80,16 +89,16 @@ async def test_given_valid_message_when_sent_then_includes_system_prompt():
 @pytest.mark.anyio
 async def test_given_rate_limit_when_sent_then_raises_chat_rate_limit():
     # GIVEN
-    service = ChatService()
     mock_client = MagicMock()
     mock_client.chat.completions.create = AsyncMock(
         side_effect=groq_sdk.RateLimitError("rate limit", response=MagicMock(), body=None)
     )
+    service = ChatService(groq_client=mock_client)
+    db = _mock_db()
 
     # WHEN / THEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=mock_client):
-        with pytest.raises(ChatRateLimitError) as exc_info:
-            await service.send_message("Qualquer mensagem")
+    with pytest.raises(ChatRateLimitError) as exc_info:
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
 
     assert "Tente novamente" in str(exc_info.value)
 
@@ -97,16 +106,16 @@ async def test_given_rate_limit_when_sent_then_raises_chat_rate_limit():
 @pytest.mark.anyio
 async def test_given_timeout_when_sent_then_raises_chat_service_timeout():
     # GIVEN
-    service = ChatService()
     mock_client = MagicMock()
     mock_client.chat.completions.create = AsyncMock(
         side_effect=groq_sdk.APITimeoutError(request=MagicMock())
     )
+    service = ChatService(groq_client=mock_client)
+    db = _mock_db()
 
     # WHEN / THEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=mock_client):
-        with pytest.raises(ChatServiceTimeoutError) as exc_info:
-            await service.send_message("Qualquer mensagem")
+    with pytest.raises(ChatServiceTimeoutError) as exc_info:
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
 
     assert "demorou demais" in str(exc_info.value)
 
@@ -114,16 +123,16 @@ async def test_given_timeout_when_sent_then_raises_chat_service_timeout():
 @pytest.mark.anyio
 async def test_given_connection_error_when_sent_then_raises_connection_error():
     # GIVEN
-    service = ChatService()
     mock_client = MagicMock()
     mock_client.chat.completions.create = AsyncMock(
         side_effect=groq_sdk.APIConnectionError(request=MagicMock())
     )
+    service = ChatService(groq_client=mock_client)
+    db = _mock_db()
 
     # WHEN / THEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=mock_client):
-        with pytest.raises(ChatServiceConnectionError) as exc_info:
-            await service.send_message("Qualquer mensagem")
+    with pytest.raises(ChatServiceConnectionError) as exc_info:
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
 
     assert "conectar" in str(exc_info.value)
 
@@ -131,18 +140,18 @@ async def test_given_connection_error_when_sent_then_raises_connection_error():
 @pytest.mark.anyio
 async def test_given_api_status_error_when_sent_then_raises_chat_service_error():
     # GIVEN
-    service = ChatService()
     mock_client = MagicMock()
     mock_client.chat.completions.create = AsyncMock(
         side_effect=groq_sdk.InternalServerError(
             "Internal Server Error", response=MagicMock(), body=None
         )
     )
+    service = ChatService(groq_client=mock_client)
+    db = _mock_db()
 
     # WHEN / THEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=mock_client):
-        with pytest.raises(ChatServiceError) as exc_info:
-            await service.send_message("Qualquer mensagem")
+    with pytest.raises(ChatServiceError) as exc_info:
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
 
     assert "inesperado" in str(exc_info.value)
 
@@ -150,12 +159,11 @@ async def test_given_api_status_error_when_sent_then_raises_chat_service_error()
 @pytest.mark.anyio
 async def test_given_none_content_when_groq_returns_then_returns_empty_string():
     # GIVEN
-    service = ChatService()
-    mock_client = _mock_groq_client(reply=None)
+    service = ChatService(groq_client=_mock_groq_client(reply=None))
+    db = _mock_db()
 
     # WHEN
-    with patch("app.services.chat_service.AsyncGroq", return_value=mock_client):
-        result = await service.send_message("Qualquer mensagem")
+    result = await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
 
     # THEN
     assert result == ""

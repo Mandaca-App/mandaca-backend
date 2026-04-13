@@ -1,7 +1,10 @@
 import logging
+import uuid
 
 import groq as groq_sdk
 from groq import AsyncGroq
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import (
@@ -10,6 +13,7 @@ from app.core.exceptions import (
     ChatServiceError,
     ChatServiceTimeoutError,
 )
+from app.models.chat_message import ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +32,12 @@ de pequenos negócios.
 
 
 class ChatService:
-    async def send_message(self, message: str) -> str:
-        client = AsyncGroq(api_key=settings.groq_api_key)
+    def __init__(self, groq_client: AsyncGroq | None = None) -> None:
+        self._client = groq_client or AsyncGroq(api_key=settings.groq_api_key)
+
+    async def send_message(self, message: str, enterprise_id: uuid.UUID, db: Session) -> str:
         try:
-            response = await client.chat.completions.create(
+            response = await self._client.chat.completions.create(
                 model=_CHAT_MODEL,
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
@@ -40,8 +46,7 @@ class ChatService:
                 max_tokens=_MAX_TOKENS,
                 temperature=_TEMPERATURE,
             )
-            content = response.choices[0].message.content
-            return content or ""
+            content = response.choices[0].message.content or ""
         except groq_sdk.RateLimitError:
             raise ChatRateLimitError()
         except groq_sdk.APITimeoutError:
@@ -50,3 +55,28 @@ class ChatService:
             raise ChatServiceConnectionError()
         except groq_sdk.APIStatusError:
             raise ChatServiceError()
+
+        chat_message = ChatMessage(
+            empresa_id=enterprise_id,
+            conteudo_usuario=message,
+            conteudo_assistente=content,
+        )
+        try:
+            db.add(chat_message)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
+        return content
+
+    def get_chat_history(self, enterprise_id: uuid.UUID, db: Session) -> list[ChatMessage]:
+        stmt = (
+            select(ChatMessage)
+            .where(
+                ChatMessage.empresa_id == enterprise_id,
+                ChatMessage.deleted_at.is_(None),
+            )
+            .order_by(ChatMessage.criado_em.asc())
+        )
+        return list(db.scalars(stmt).all())

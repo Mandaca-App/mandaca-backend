@@ -67,3 +67,10 @@ class Enterprise(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    mensagens_chat = relationship(
+        "ChatMessage",
+        back_populates="empresa",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
