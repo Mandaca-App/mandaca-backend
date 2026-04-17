@@ -14,6 +14,7 @@ from app.core.exceptions import (
     ChatServiceTimeoutError,
 )
 from app.models.chat_message import ChatMessage
+from app.services.chat_context_service import ChatContextService
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +33,22 @@ de pequenos negócios.
 
 
 class ChatService:
-    def __init__(self, groq_client: AsyncGroq | None = None) -> None:
+    def __init__(
+        self,
+        groq_client: AsyncGroq | None = None,
+        context_service: ChatContextService | None = None,
+    ) -> None:
         self._client = groq_client or AsyncGroq(api_key=settings.groq_api_key)
+        self._context_service = context_service or ChatContextService()
 
     async def send_message(self, message: str, enterprise_id: uuid.UUID, db: Session) -> str:
+        context = self._context_service.build_context(enterprise_id, db)
+        system_content = _SYSTEM_PROMPT + ("\n\n" + context if context else "")
         try:
             response = await self._client.chat.completions.create(
                 model=_CHAT_MODEL,
                 messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
+                    {"role": "system", "content": system_content},
                     {"role": "user", "content": message},
                 ],
                 max_tokens=_MAX_TOKENS,
