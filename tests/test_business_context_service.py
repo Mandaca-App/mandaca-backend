@@ -38,7 +38,8 @@ FAKE_DADOS = {
 # dados_contexto para Create ainda é string (service chama _parse_dados internamente)
 FAKE_DADOS_STR = (
     '{"nome": "Restaurante Teste", "especialidade": "Nordestina",'
-    ' "cardapio": [{"categoria": "prato_principal", "descricao": "Baião de dois", "preco": "35.00"}]}'
+    ' "cardapio": [{"categoria": "prato_principal", '
+    '"descricao": "Baião de dois", "preco": "35.00"}]}'
 )
 
 FAKE_HASH = "a" * 64
@@ -450,4 +451,3 @@ def test_given_missing_context_when_delete_then_does_not_commit():
             business_context_service.delete(FAKE_CONTEXT_ID, db)
 
     db.commit.assert_not_called()
-    

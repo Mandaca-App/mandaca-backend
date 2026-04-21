@@ -1,4 +1,5 @@
 from app.models.assessment import Assessment as Assessment
+from app.models.business_context import BusinessContext as BusinessContext
 from app.models.chat_message import ChatMessage as ChatMessage
 from app.models.enterprise import Enterprise as Enterprise
 from app.models.menu import Menu as Menu
@@ -6,4 +7,3 @@ from app.models.notification import Notification as Notification
 from app.models.photo import Photo as Photo
 from app.models.reservation import Reservation as Reservation
 from app.models.user import User as User
-from app.models.business_context import BusinessContext as BusinessContext

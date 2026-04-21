@@ -24,7 +24,6 @@ from app.core.exceptions import (
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
     UserNotFoundError,
-    
 )
 from app.routers import (
     assessments,
@@ -120,8 +119,8 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(AudioServiceTimeoutError, _handle_504)
     fastapi_app.add_exception_handler(ChatRateLimitError, _handle_429)
     fastapi_app.add_exception_handler(ChatServiceTimeoutError, _handle_504)
-    fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404) 
-    fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)   
+    fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404)
+    fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
 
 
 _register_handlers(app)
