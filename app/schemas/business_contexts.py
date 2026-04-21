@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class BusinessContextCreate(BaseModel):
-    dados_contexto: dict[str, Any]  # objeto JSON direto, sem escapar
+    dados_contexto: dict | str  # objeto JSON direto, sem escapar
     empresa_id: UUID
 
 
