@@ -25,6 +25,7 @@ from app.core.exceptions import (
 )
 from app.routers import (
     assessments,
+    business_context,
     chat,
     enterprises,
     menus,
@@ -44,6 +45,7 @@ app.include_router(transcriptions.router)
 app.include_router(assessments.router)
 app.include_router(chat.router)
 app.include_router(menus.router)
+app.include_router(business_context.router)
 
 
 # ---------------------------------------------------------------------------
