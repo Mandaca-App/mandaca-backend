@@ -74,3 +74,9 @@ class Enterprise(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    contextos = relationship(
+        "BusinessContext",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
