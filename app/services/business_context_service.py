@@ -67,7 +67,9 @@ class BusinessContextService:
         dados = BusinessContextBuilderService().build_snapshot(empresa_id, db)
         return self._persist(empresa_id, dados, db)
 
-    def update(self, context_id: UUID, payload: BusinessContextUpdate, db: Session) -> BusinessContext:
+    def update(
+        self, context_id: UUID, payload: BusinessContextUpdate, db: Session
+    ) -> BusinessContext:
         """Atualiza os dados do contexto e recalcula o hash SHA-256."""
         context = self.get_by_id(context_id, db)
 

@@ -43,7 +43,9 @@ _CONTEXT_RESPONSE = BusinessContextResponse(
 
 def test_given_contexts_exist_when_list_by_enterprise_then_returns_200():
     # GIVEN
-    with patch.object(business_context_service, "list_by_enterprise", return_value=[_CONTEXT_RESPONSE]):
+    with patch.object(
+        business_context_service, "list_by_enterprise", return_value=[_CONTEXT_RESPONSE]
+    ):
         # WHEN
         response = client.get(f"/business-contexts/by-enterprise/{FAKE_ENTERPRISE_ID}")
 
@@ -107,7 +109,9 @@ def test_given_invalid_uuid_when_get_by_id_then_returns_422():
 
 def test_given_enterprise_exists_when_create_from_enterprise_then_returns_201():
     # GIVEN
-    with patch.object(business_context_service, "create_from_enterprise", return_value=_CONTEXT_RESPONSE):
+    with patch.object(
+        business_context_service, "create_from_enterprise", return_value=_CONTEXT_RESPONSE
+    ):
         # WHEN
         response = client.post(f"/business-contexts/{FAKE_ENTERPRISE_ID}")
 
@@ -120,7 +124,9 @@ def test_given_enterprise_exists_when_create_from_enterprise_then_returns_201():
 
 def test_given_valid_enterprise_when_create_from_enterprise_then_returns_context_fields():
     # GIVEN
-    with patch.object(business_context_service, "create_from_enterprise", return_value=_CONTEXT_RESPONSE):
+    with patch.object(
+        business_context_service, "create_from_enterprise", return_value=_CONTEXT_RESPONSE
+    ):
         # WHEN
         response = client.post(f"/business-contexts/{FAKE_ENTERPRISE_ID}")
 
