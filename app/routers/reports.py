@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
+from app.models.report import AIReport
 from app.schemas.reports import AIReportDetail, AIReportSummary
 from app.services.report_service import ReportService
 
@@ -23,7 +24,7 @@ async def generate_report(
     empresa_id: UUID,
     db: Session = Depends(get_db),
     service: ReportService = Depends(get_report_service),
-) -> AIReportDetail:
+) -> AIReport:
     return service.generate_report(empresa_id, db)
 
 
@@ -32,7 +33,7 @@ async def list_reports_by_enterprise(
     empresa_id: UUID,
     db: Session = Depends(get_db),
     service: ReportService = Depends(get_report_service),
-) -> list[AIReportSummary]:
+) -> list[AIReport]:
     return service.list_by_enterprise(empresa_id, db)
 
 
@@ -41,5 +42,5 @@ async def get_report(
     report_id: UUID,
     db: Session = Depends(get_db),
     service: ReportService = Depends(get_report_service),
-) -> AIReportDetail:
+) -> AIReport:
     return service.get_by_id(report_id, db)
