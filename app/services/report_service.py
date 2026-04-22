@@ -46,7 +46,7 @@ class ReportService:
     def generate_report(self, empresa_id: UUID, db: Session) -> AIReport:
         contextos = self._context_service.list_by_enterprise(empresa_id, db)
         if not contextos:
-            raise BusinessContextNotFoundError(empresa_id)
+            raise BusinessContextNotFoundError(f"nenhum contexto salvo para a empresa {empresa_id}")
 
         contexto = contextos[0]
         context_str = json.dumps(contexto.dados_contexto, ensure_ascii=False)
