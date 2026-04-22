@@ -124,3 +124,20 @@ class MenuNotFoundError(MandacaError):
     def __init__(self, menu_id: UUID | str) -> None:
         super().__init__(f"Cardápio não encontrado: {menu_id}")
         self.menu_id = menu_id
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Contexto de Negócio (business_context_service)
+# ---------------------------------------------------------------------------
+
+
+class BusinessContextNotFoundError(MandacaError):
+    def __init__(self, context_id: UUID | str) -> None:
+        super().__init__(f"Contexto de negócio não encontrado: {context_id}")
+        self.context_id = context_id
+
+
+class InvalidContextDataError(MandacaError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"dados_contexto inválido: {detail}")
+        self.detail = detail

@@ -10,6 +10,7 @@ from app.core.exceptions import (
     AudioServiceTimeoutError,
     AudioTooLargeError,
     AudioTranscriptionError,
+    BusinessContextNotFoundError,
     ChatRateLimitError,
     ChatServiceConnectionError,
     ChatServiceError,
@@ -17,6 +18,7 @@ from app.core.exceptions import (
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     GeocodingUnavailableError,
+    InvalidContextDataError,
     MandacaError,
     UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
@@ -25,6 +27,7 @@ from app.core.exceptions import (
 )
 from app.routers import (
     assessments,
+    business_context,
     chat,
     enterprises,
     menus,
@@ -44,6 +47,7 @@ app.include_router(transcriptions.router)
 app.include_router(assessments.router)
 app.include_router(chat.router)
 app.include_router(menus.router)
+app.include_router(business_context.router)
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +119,8 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(AudioServiceTimeoutError, _handle_504)
     fastapi_app.add_exception_handler(ChatRateLimitError, _handle_429)
     fastapi_app.add_exception_handler(ChatServiceTimeoutError, _handle_504)
+    fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404)
+    fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
 
 
 _register_handlers(app)
