@@ -80,3 +80,9 @@ class Enterprise(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    relatorios_ia = relationship(
+        "AIReport",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
