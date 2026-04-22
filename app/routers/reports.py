@@ -27,15 +27,6 @@ async def generate_report(
     return service.generate_report(empresa_id, db)
 
 
-@router.get("/{report_id}", response_model=AIReportDetail)
-async def get_report(
-    report_id: UUID,
-    db: Session = Depends(get_db),
-    service: ReportService = Depends(get_report_service),
-) -> AIReportDetail:
-    return service.get_by_id(report_id, db)
-
-
 @router.get("/by-enterprise/{empresa_id}", response_model=list[AIReportSummary])
 async def list_reports_by_enterprise(
     empresa_id: UUID,
@@ -43,3 +34,12 @@ async def list_reports_by_enterprise(
     service: ReportService = Depends(get_report_service),
 ) -> list[AIReportSummary]:
     return service.list_by_enterprise(empresa_id, db)
+
+
+@router.get("/{report_id}", response_model=AIReportDetail)
+async def get_report(
+    report_id: UUID,
+    db: Session = Depends(get_db),
+    service: ReportService = Depends(get_report_service),
+) -> AIReportDetail:
+    return service.get_by_id(report_id, db)
