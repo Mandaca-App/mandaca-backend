@@ -3,18 +3,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-import app.services.business_context_service as business_context_service
 from app.core.session import get_db
 from app.schemas.business_contexts import (
     BusinessContextResponse,
     BusinessContextUpdate,
 )
+from app.services.business_context_service import BusinessContextService
 
 router = APIRouter(prefix="/business-contexts", tags=["business-contexts"])
+business_context_service = BusinessContextService()
 
 
 @router.get("/by-enterprise/{enterprise_id}", response_model=list[BusinessContextResponse])
-def list_contexts_by_enterprise(
+async def list_contexts_by_enterprise(
     enterprise_id: UUID,
     db: Session = Depends(get_db),
 ) -> list[BusinessContextResponse]:
@@ -22,7 +23,7 @@ def list_contexts_by_enterprise(
 
 
 @router.get("/{context_id}", response_model=BusinessContextResponse)
-def get_context(
+async def get_context(
     context_id: UUID,
     db: Session = Depends(get_db),
 ) -> BusinessContextResponse:
@@ -34,7 +35,7 @@ def get_context(
     response_model=BusinessContextResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_context_from_enterprise(
+async def create_context_from_enterprise(
     enterprise_id: UUID,
     db: Session = Depends(get_db),
 ) -> BusinessContextResponse:
@@ -44,7 +45,7 @@ def create_context_from_enterprise(
 
 
 @router.put("/{context_id}", response_model=BusinessContextResponse)
-def update_context(
+async def update_context(
     context_id: UUID,
     payload: BusinessContextUpdate,
     db: Session = Depends(get_db),
@@ -53,7 +54,7 @@ def update_context(
 
 
 @router.delete("/{context_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_context(
+async def delete_context(
     context_id: UUID,
     db: Session = Depends(get_db),
 ):

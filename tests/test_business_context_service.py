@@ -1,5 +1,5 @@
 """
-Testes unitários para business_context_service.
+Testes unitários para BusinessContextService.
 
 Foco: lógica de negócio da camada de service isolada.
 Estratégia: SQLAlchemy Session completamente mockada.
@@ -15,12 +15,11 @@ import pytest
 from app.core.exceptions import (
     BusinessContextNotFoundError,
     EnterpriseNotFoundError,
-    InvalidContextDataError,
 )
 from app.models.business_context import BusinessContext
 from app.models.enterprise import Enterprise
-from app.schemas.business_contexts import BusinessContextCreate, BusinessContextUpdate
-from app.services import business_context_service
+from app.schemas.business_contexts import BusinessContextUpdate
+from app.services.business_context_service import BusinessContextService
 
 # ---------------------------------------------------------------------------
 # Constantes
@@ -34,13 +33,6 @@ FAKE_DADOS = {
     "especialidade": "Nordestina",
     "cardapio": [{"categoria": "prato_principal", "descricao": "Baião de dois", "preco": "35.00"}],
 }
-
-# dados_contexto para Create ainda é string (service chama _parse_dados internamente)
-FAKE_DADOS_STR = (
-    '{"nome": "Restaurante Teste", "especialidade": "Nordestina",'
-    ' "cardapio": [{"categoria": "prato_principal", '
-    '"descricao": "Baião de dois", "preco": "35.00"}]}'
-)
 
 FAKE_HASH = "a" * 64
 
@@ -100,12 +92,13 @@ def _mock_db() -> MagicMock:
 
 def test_given_existing_context_when_get_by_id_then_returns_it():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     context = _make_context()
     db.get.return_value = context
 
     # WHEN
-    result = business_context_service.get_by_id(FAKE_CONTEXT_ID, db)
+    result = service.get_by_id(FAKE_CONTEXT_ID, db)
 
     # THEN
     assert result is context
@@ -113,12 +106,13 @@ def test_given_existing_context_when_get_by_id_then_returns_it():
 
 def test_given_missing_context_when_get_by_id_then_raises_not_found():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     db.get.return_value = None
 
     # WHEN / THEN
     with pytest.raises(BusinessContextNotFoundError):
-        business_context_service.get_by_id(FAKE_CONTEXT_ID, db)
+        service.get_by_id(FAKE_CONTEXT_ID, db)
 
 
 # ---------------------------------------------------------------------------
@@ -128,14 +122,14 @@ def test_given_missing_context_when_get_by_id_then_raises_not_found():
 
 def test_given_existing_enterprise_when_list_by_enterprise_then_returns_contexts():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
-    enterprise = _make_enterprise()
     contexts = [_make_context(), _make_context(id_contexto=uuid.uuid4())]
-    db.get.return_value = enterprise
+    db.get.return_value = _make_enterprise()
     db.execute.return_value.scalars.return_value.all.return_value = contexts
 
     # WHEN
-    result = business_context_service.list_by_enterprise(FAKE_ENTERPRISE_ID, db)
+    result = service.list_by_enterprise(FAKE_ENTERPRISE_ID, db)
 
     # THEN
     assert len(result) == 2
@@ -143,12 +137,13 @@ def test_given_existing_enterprise_when_list_by_enterprise_then_returns_contexts
 
 def test_given_existing_enterprise_with_no_contexts_when_list_then_returns_empty():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     db.get.return_value = _make_enterprise()
     db.execute.return_value.scalars.return_value.all.return_value = []
 
     # WHEN
-    result = business_context_service.list_by_enterprise(FAKE_ENTERPRISE_ID, db)
+    result = service.list_by_enterprise(FAKE_ENTERPRISE_ID, db)
 
     # THEN
     assert result == []
@@ -156,12 +151,13 @@ def test_given_existing_enterprise_with_no_contexts_when_list_then_returns_empty
 
 def test_given_missing_enterprise_when_list_by_enterprise_then_raises_not_found():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     db.get.return_value = None
 
     # WHEN / THEN
     with pytest.raises(EnterpriseNotFoundError):
-        business_context_service.list_by_enterprise(FAKE_ENTERPRISE_ID, db)
+        service.list_by_enterprise(FAKE_ENTERPRISE_ID, db)
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +167,7 @@ def test_given_missing_enterprise_when_list_by_enterprise_then_raises_not_found(
 
 def test_given_existing_enterprise_when_create_from_enterprise_then_persists_snapshot():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     db.get.return_value = _make_enterprise()
     fake_snapshot = {"nome": "Empresa Teste", "cardapio": []}
@@ -180,7 +177,7 @@ def test_given_existing_enterprise_when_create_from_enterprise_then_persists_sna
         return_value=fake_snapshot,
     ):
         # WHEN
-        business_context_service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
+        service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
 
     # THEN
     db.add.assert_called_once()
@@ -192,6 +189,7 @@ def test_given_existing_enterprise_when_create_from_enterprise_then_persists_sna
 
 def test_given_existing_enterprise_when_create_from_enterprise_then_computes_hash():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     db.get.return_value = _make_enterprise()
 
@@ -200,7 +198,7 @@ def test_given_existing_enterprise_when_create_from_enterprise_then_computes_has
         return_value={"nome": "Empresa Teste"},
     ):
         # WHEN
-        business_context_service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
+        service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
 
     # THEN
     added: BusinessContext = db.add.call_args[0][0]
@@ -209,16 +207,18 @@ def test_given_existing_enterprise_when_create_from_enterprise_then_computes_has
 
 def test_given_missing_enterprise_when_create_from_enterprise_then_raises_not_found():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     db.get.return_value = None
 
     # WHEN / THEN
     with pytest.raises(EnterpriseNotFoundError):
-        business_context_service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
+        service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
 
 
 def test_given_missing_enterprise_when_create_from_enterprise_then_does_not_call_builder():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     db.get.return_value = None
 
@@ -227,26 +227,44 @@ def test_given_missing_enterprise_when_create_from_enterprise_then_does_not_call
     ) as mock_builder:
         # WHEN / THEN
         with pytest.raises(EnterpriseNotFoundError):
-            business_context_service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
+            service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
 
     mock_builder.assert_not_called()
 
 
+def test_given_missing_enterprise_when_create_from_enterprise_then_does_not_persist():
+    # GIVEN
+    service = BusinessContextService()
+    db = _mock_db()
+    db.get.return_value = None
+
+    with patch(
+        "app.services.business_context_service.BusinessContextBuilderService.build_snapshot",
+    ):
+        # WHEN / THEN
+        with pytest.raises(EnterpriseNotFoundError):
+            service.create_from_enterprise(FAKE_ENTERPRISE_ID, db)
+
+    db.add.assert_not_called()
+    db.commit.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
-# update  (dados_contexto chega como dict — sem _parse_dados)
+# update  (dados_contexto chega como dict — Pydantic já validou)
 # ---------------------------------------------------------------------------
 
 
 def test_given_new_dados_when_update_then_persists_them():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     context = _make_context(dados_contexto={"nome": "Antigo"})
     novos_dados = {"nome": "Atualizado", "especialidade": "Japonesa"}
     payload = BusinessContextUpdate(dados_contexto=novos_dados)
 
-    with patch("app.services.business_context_service.get_by_id", return_value=context):
+    with patch.object(service, "get_by_id", return_value=context):
         # WHEN
-        business_context_service.update(FAKE_CONTEXT_ID, payload, db)
+        service.update(FAKE_CONTEXT_ID, payload, db)
 
     # THEN
     assert context.dados_contexto == novos_dados
@@ -255,14 +273,15 @@ def test_given_new_dados_when_update_then_persists_them():
 
 def test_given_new_dados_when_update_then_recalculates_hash():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     old_hash = "b" * 64
     context = _make_context(hash_contexto=old_hash)
     payload = BusinessContextUpdate(dados_contexto={"nome": "Diferente"})
 
-    with patch("app.services.business_context_service.get_by_id", return_value=context):
+    with patch.object(service, "get_by_id", return_value=context):
         # WHEN
-        business_context_service.update(FAKE_CONTEXT_ID, payload, db)
+        service.update(FAKE_CONTEXT_ID, payload, db)
 
     # THEN
     assert context.hash_contexto != old_hash
@@ -271,15 +290,16 @@ def test_given_new_dados_when_update_then_recalculates_hash():
 
 def test_given_empty_payload_when_update_then_does_not_change_context():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     original_dados = {"nome": "Inalterado"}
     original_hash = "c" * 64
     context = _make_context(dados_contexto=original_dados, hash_contexto=original_hash)
     payload = BusinessContextUpdate()
 
-    with patch("app.services.business_context_service.get_by_id", return_value=context):
+    with patch.object(service, "get_by_id", return_value=context):
         # WHEN
-        business_context_service.update(FAKE_CONTEXT_ID, payload, db)
+        service.update(FAKE_CONTEXT_ID, payload, db)
 
     # THEN
     assert context.dados_contexto == original_dados
@@ -289,16 +309,16 @@ def test_given_empty_payload_when_update_then_does_not_change_context():
 
 def test_given_missing_context_when_update_then_raises_not_found():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     payload = BusinessContextUpdate(dados_contexto={"nome": "X"})
 
-    with patch(
-        "app.services.business_context_service.get_by_id",
-        side_effect=BusinessContextNotFoundError(FAKE_CONTEXT_ID),
+    with patch.object(
+        service, "get_by_id", side_effect=BusinessContextNotFoundError(FAKE_CONTEXT_ID)
     ):
         # WHEN / THEN
         with pytest.raises(BusinessContextNotFoundError):
-            business_context_service.update(FAKE_CONTEXT_ID, payload, db)
+            service.update(FAKE_CONTEXT_ID, payload, db)
 
 
 # ---------------------------------------------------------------------------
@@ -308,12 +328,13 @@ def test_given_missing_context_when_update_then_raises_not_found():
 
 def test_given_existing_context_when_delete_then_removes_it():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
     context = _make_context()
 
-    with patch("app.services.business_context_service.get_by_id", return_value=context):
+    with patch.object(service, "get_by_id", return_value=context):
         # WHEN
-        business_context_service.delete(FAKE_CONTEXT_ID, db)
+        service.delete(FAKE_CONTEXT_ID, db)
 
     # THEN
     db.delete.assert_called_once_with(context)
@@ -322,27 +343,27 @@ def test_given_existing_context_when_delete_then_removes_it():
 
 def test_given_missing_context_when_delete_then_raises_not_found():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
 
-    with patch(
-        "app.services.business_context_service.get_by_id",
-        side_effect=BusinessContextNotFoundError(FAKE_CONTEXT_ID),
+    with patch.object(
+        service, "get_by_id", side_effect=BusinessContextNotFoundError(FAKE_CONTEXT_ID)
     ):
         # WHEN / THEN
         with pytest.raises(BusinessContextNotFoundError):
-            business_context_service.delete(FAKE_CONTEXT_ID, db)
+            service.delete(FAKE_CONTEXT_ID, db)
 
 
 def test_given_missing_context_when_delete_then_does_not_commit():
     # GIVEN
+    service = BusinessContextService()
     db = _mock_db()
 
-    with patch(
-        "app.services.business_context_service.get_by_id",
-        side_effect=BusinessContextNotFoundError(FAKE_CONTEXT_ID),
+    with patch.object(
+        service, "get_by_id", side_effect=BusinessContextNotFoundError(FAKE_CONTEXT_ID)
     ):
         # WHEN / THEN
         with pytest.raises(BusinessContextNotFoundError):
-            business_context_service.delete(FAKE_CONTEXT_ID, db)
+            service.delete(FAKE_CONTEXT_ID, db)
 
     db.commit.assert_not_called()

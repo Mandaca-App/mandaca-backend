@@ -2,8 +2,8 @@
 Testes smoke para os endpoints de business-contexts (app/routers/business_context.py).
 
 Foco: verificar wire-up HTTP correto (roteamento, status codes, serialização da response).
-Estratégia: services completamente mockados; lógica de negócio é coberta em
-test_business_context_service.py.
+Estratégia: instância de BusinessContextService mockada via patch.object; lógica de negócio
+é coberta em test_business_context_service.py.
 """
 
 import uuid
@@ -13,6 +13,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.routers.business_context import business_context_service
 from app.schemas.business_contexts import BusinessContextResponse
 
 client = TestClient(app, raise_server_exceptions=False)
@@ -42,10 +43,7 @@ _CONTEXT_RESPONSE = BusinessContextResponse(
 
 def test_given_contexts_exist_when_list_by_enterprise_then_returns_200():
     # GIVEN
-    with patch(
-        "app.services.business_context_service.list_by_enterprise",
-        return_value=[_CONTEXT_RESPONSE],
-    ):
+    with patch.object(business_context_service, "list_by_enterprise", return_value=[_CONTEXT_RESPONSE]):
         # WHEN
         response = client.get(f"/business-contexts/by-enterprise/{FAKE_ENTERPRISE_ID}")
 
@@ -58,10 +56,7 @@ def test_given_contexts_exist_when_list_by_enterprise_then_returns_200():
 
 def test_given_no_contexts_when_list_by_enterprise_then_returns_200_empty():
     # GIVEN
-    with patch(
-        "app.services.business_context_service.list_by_enterprise",
-        return_value=[],
-    ):
+    with patch.object(business_context_service, "list_by_enterprise", return_value=[]):
         # WHEN
         response = client.get(f"/business-contexts/by-enterprise/{FAKE_ENTERPRISE_ID}")
 
@@ -85,10 +80,7 @@ def test_given_invalid_uuid_when_list_by_enterprise_then_returns_422():
 
 def test_given_context_exists_when_get_by_id_then_returns_200():
     # GIVEN
-    with patch(
-        "app.services.business_context_service.get_by_id",
-        return_value=_CONTEXT_RESPONSE,
-    ):
+    with patch.object(business_context_service, "get_by_id", return_value=_CONTEXT_RESPONSE):
         # WHEN
         response = client.get(f"/business-contexts/{FAKE_CONTEXT_ID}")
 
@@ -115,10 +107,7 @@ def test_given_invalid_uuid_when_get_by_id_then_returns_422():
 
 def test_given_enterprise_exists_when_create_from_enterprise_then_returns_201():
     # GIVEN
-    with patch(
-        "app.services.business_context_service.create_from_enterprise",
-        return_value=_CONTEXT_RESPONSE,
-    ):
+    with patch.object(business_context_service, "create_from_enterprise", return_value=_CONTEXT_RESPONSE):
         # WHEN
         response = client.post(f"/business-contexts/{FAKE_ENTERPRISE_ID}")
 
@@ -131,10 +120,7 @@ def test_given_enterprise_exists_when_create_from_enterprise_then_returns_201():
 
 def test_given_valid_enterprise_when_create_from_enterprise_then_returns_context_fields():
     # GIVEN
-    with patch(
-        "app.services.business_context_service.create_from_enterprise",
-        return_value=_CONTEXT_RESPONSE,
-    ):
+    with patch.object(business_context_service, "create_from_enterprise", return_value=_CONTEXT_RESPONSE):
         # WHEN
         response = client.post(f"/business-contexts/{FAKE_ENTERPRISE_ID}")
 
@@ -167,10 +153,7 @@ def test_given_valid_payload_when_update_then_returns_200():
         criado_em=datetime(2026, 4, 21, 12, 0, 0, tzinfo=timezone.utc),
     )
 
-    with patch(
-        "app.services.business_context_service.update",
-        return_value=updated_response,
-    ):
+    with patch.object(business_context_service, "update", return_value=updated_response):
         # WHEN
         response = client.put(
             f"/business-contexts/{FAKE_CONTEXT_ID}",
@@ -185,11 +168,8 @@ def test_given_valid_payload_when_update_then_returns_200():
 
 
 def test_given_empty_payload_when_update_then_returns_200():
-    # GIVEN — payload vazio é válido (todos os campos são opcionais no Update)
-    with patch(
-        "app.services.business_context_service.update",
-        return_value=_CONTEXT_RESPONSE,
-    ):
+    # GIVEN
+    with patch.object(business_context_service, "update", return_value=_CONTEXT_RESPONSE):
         # WHEN
         response = client.put(f"/business-contexts/{FAKE_CONTEXT_ID}", json={})
 
@@ -223,10 +203,7 @@ def test_given_invalid_uuid_when_update_then_returns_422():
 
 def test_given_existing_context_when_delete_then_returns_204():
     # GIVEN
-    with patch(
-        "app.services.business_context_service.delete",
-        return_value=None,
-    ):
+    with patch.object(business_context_service, "delete", return_value=None):
         # WHEN
         response = client.delete(f"/business-contexts/{FAKE_CONTEXT_ID}")
 
