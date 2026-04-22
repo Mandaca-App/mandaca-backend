@@ -21,14 +21,6 @@ from app.services.business_context_builder_service import BusinessContextBuilder
 # ---------------------------------------------------------------------------
 
 
-def _parse_dados(raw: str) -> Any:
-    """Faz o parse do texto JSON recebido ou lança InvalidContextDataError."""
-    try:
-        return json.loads(raw)
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise InvalidContextDataError(str(exc))
-
-
 def _compute_hash(dados: Any) -> str:
     """Serializa os dados de forma determinística e retorna o SHA-256 hex."""
     serialized = json.dumps(dados, ensure_ascii=False, sort_keys=True)
@@ -77,15 +69,6 @@ def list_by_enterprise(enterprise_id: UUID, db: Session) -> list[BusinessContext
         .all()
     )
 
-
-def create(payload: BusinessContextCreate, db: Session) -> BusinessContext:
-    """Cria um contexto de negócio a partir de um JSON enviado manualmente pelo cliente."""
-    enterprise = db.get(Enterprise, payload.empresa_id)
-    if not enterprise:
-        raise EnterpriseNotFoundError(payload.empresa_id)
-
-    dados = _parse_dados(payload.dados_contexto)
-    return _persist(payload.empresa_id, dados, db)
 
 
 def create_from_enterprise(empresa_id: UUID, db: Session) -> BusinessContext:
