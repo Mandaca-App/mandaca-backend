@@ -2,13 +2,17 @@ import json
 from uuid import UUID
 
 from google import genai
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import AIReportGenerationError, AIReportNotFoundError
+from app.core.exceptions import (
+    AIReportGenerationError,
+    AIReportNotFoundError,
+    BusinessContextNotFoundError,
+)
 from app.models.report import AIReport
-from app.schemas.reports import _AIReportLLMOutput
 from app.services.business_context_service import BusinessContextService
 
 _SYSTEM_PROMPT = (
@@ -21,33 +25,34 @@ _SYSTEM_PROMPT = (
 )
 
 
+class _AIReportLLMOutput(BaseModel):
+    pontos_positivos_resumo: str
+    pontos_positivos_detalhado: str
+    melhorias_resumo: str
+    melhorias_detalhado: str
+    recomendacoes_resumo: str
+    recomendacoes_detalhado: str
+
+
 class ReportService:
     def __init__(
         self,
         gemini_client: genai.Client | None = None,
         context_service: BusinessContextService | None = None,
     ) -> None:
-        self._gemini_client = gemini_client
+        self._gemini_client = gemini_client or genai.Client(api_key=settings.gemini_api_key)
         self._context_service = context_service or BusinessContextService()
-
-    def _get_gemini_client(self) -> genai.Client:
-        if self._gemini_client is not None:
-            return self._gemini_client
-        return genai.Client(api_key=settings.gemini_api_key)
 
     def generate_report(self, empresa_id: UUID, db: Session) -> AIReport:
         contextos = self._context_service.list_by_enterprise(empresa_id, db)
         if not contextos:
-            raise AIReportNotFoundError(
-                f"Nenhum contexto de negócio encontrado para a empresa: {empresa_id}"
-            )
+            raise BusinessContextNotFoundError(empresa_id)
 
         contexto = contextos[0]
         context_str = json.dumps(contexto.dados_contexto, ensure_ascii=False)
 
-        client = self._get_gemini_client()
         try:
-            response = client.models.generate_content(
+            response = self._gemini_client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=f"Contexto do negócio:\n{context_str}",
                 config={

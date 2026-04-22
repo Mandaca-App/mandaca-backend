@@ -4,10 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-class AIReportGenerate(BaseModel):
-    empresa_id: UUID
-
-
 class AIReportSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,12 +29,3 @@ class AIReportDetail(BaseModel):
     recomendacoes_resumo: str
     recomendacoes_detalhado: str
     criado_em: datetime
-
-
-class _AIReportLLMOutput(BaseModel):
-    pontos_positivos_resumo: str
-    pontos_positivos_detalhado: str
-    melhorias_resumo: str
-    melhorias_detalhado: str
-    recomendacoes_resumo: str
-    recomendacoes_detalhado: str
