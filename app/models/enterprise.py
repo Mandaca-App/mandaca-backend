@@ -77,12 +77,14 @@ class Enterprise(Base):
 
     contextos = relationship(
         "BusinessContext",
+        back_populates="empresa",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
 
     relatorios_ia = relationship(
         "AIReport",
+        back_populates="empresa",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )

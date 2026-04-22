@@ -37,4 +37,4 @@ class AIReport(Base):
     )
 
     contexto = relationship("BusinessContext", back_populates="relatorios")
-    empresa = relationship("Enterprise", overlaps="relatorios_ia")
+    empresa = relationship("Enterprise", back_populates="relatorios_ia")
