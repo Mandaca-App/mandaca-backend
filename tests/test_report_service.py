@@ -13,7 +13,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.core.exceptions import AIReportGenerationError, AIReportNotFoundError
+from app.core.exceptions import (
+    AIReportGenerationError,
+    AIReportNotFoundError,
+    BusinessContextNotFoundError,
+)
 from app.models.business_context import BusinessContext
 from app.models.report import AIReport
 
@@ -169,15 +173,14 @@ def test_given_empresa_no_context_when_generate_then_raises_not_found():
     service = ReportService(gemini_client=gemini, context_service=ctx_svc)
 
     # WHEN / THEN
-    with pytest.raises(AIReportNotFoundError):
+    with pytest.raises(BusinessContextNotFoundError):
         service.generate_report(FAKE_EMPRESA_ID, db)
 
 
 def test_given_invalid_empresa_when_generate_then_raises_not_found():
     # GIVEN
-    from app.services.report_service import ReportService
-
     from app.core.exceptions import EnterpriseNotFoundError
+    from app.services.report_service import ReportService
 
     db = _mock_db()
     gemini = _mock_gemini_client()
