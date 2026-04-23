@@ -41,12 +41,32 @@ jobs:
           git tag "v${{ steps.version.outputs.version }}"
           git push origin "v${{ steps.version.outputs.version }}"
 
+      - name: Gerar notas da release
+        if: steps.check-tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: |
+          VERSION="v${{ steps.version.outputs.version }}"
+          GENERATED=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+            --field tag_name="$VERSION" \
+            --jq '.body')
+
+          {
+            echo "## Links"
+            echo ""
+            echo "**API de Producao:** https://mandaca-backend-production.onrender.com"
+            echo ""
+            echo "---"
+            echo ""
+            echo "$GENERATED"
+          } > /tmp/release-notes.md
+
       - name: Criar GitHub Release
         if: steps.check-tag.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
         run: |
           gh release create "v${{ steps.version.outputs.version }}" \
-            --generate-notes \
+            --notes-file /tmp/release-notes.md \
             --latest \
             --title "Release v${{ steps.version.outputs.version }}"
