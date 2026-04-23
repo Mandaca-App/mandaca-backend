@@ -5,6 +5,8 @@ import app.models
 from app.core.config import settings
 from app.core.exceptions import (
     AddressNotFoundError,
+    AIReportGenerationError,
+    AIReportNotFoundError,
     AudioRateLimitError,
     AudioServiceConnectionError,
     AudioServiceTimeoutError,
@@ -33,6 +35,7 @@ from app.routers import (
     menus,
     notifications,
     photos,
+    reports,
     transcriptions,
     users,
 )
@@ -48,13 +51,14 @@ app.include_router(assessments.router)
 app.include_router(chat.router)
 app.include_router(menus.router)
 app.include_router(business_context.router)
+app.include_router(reports.router)
 
 
 # ---------------------------------------------------------------------------
 # Handlers de exceções de domínio — conversão domínio → HTTP única e central
 # ---------------------------------------------------------------------------
 
-_NOT_FOUND_TYPES = (EnterpriseNotFoundError, UserNotFoundError)
+_NOT_FOUND_TYPES = (EnterpriseNotFoundError, UserNotFoundError, AIReportNotFoundError)
 _BAD_REQUEST_TYPES = (
     DuplicateEnterpriseNameError,
     UserAlreadyHasEnterpriseError,
@@ -65,6 +69,7 @@ _BAD_GATEWAY_TYPES = (
     AudioTranscriptionError,
     ChatServiceConnectionError,
     ChatServiceError,
+    AIReportGenerationError,
 )
 
 

@@ -27,3 +27,4 @@ class BusinessContext(Base):
     )
 
     empresa = relationship("Enterprise", back_populates="contextos")
+    relatorios = relationship("AIReport", back_populates="contexto", cascade="all, delete-orphan")

@@ -141,3 +141,20 @@ class InvalidContextDataError(MandacaError):
     def __init__(self, detail: str) -> None:
         super().__init__(f"dados_contexto inválido: {detail}")
         self.detail = detail
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Relatório IA (report_service)
+# ---------------------------------------------------------------------------
+
+
+class AIReportNotFoundError(MandacaError):
+    def __init__(self, report_id: UUID | str) -> None:
+        super().__init__(f"Relatório IA não encontrado: {report_id}")
+        self.report_id = report_id
+
+
+class AIReportGenerationError(MandacaError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"Falha ao gerar relatório IA: {detail}")
+        self.detail = detail
