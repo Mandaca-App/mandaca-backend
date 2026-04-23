@@ -1,0 +1,120 @@
+name: Weekly Release
+
+on:
+  schedule:
+    - cron: '0 8 * * 0'
+  workflow_dispatch:
+
+jobs:
+  open-release-pr:
+    name: Create Release PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_RELEASE_TOKEN }}
+
+      - name: Configurar git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verificar commits novos em dev
+        id: check-ahead
+        run: |
+          git fetch origin
+          AHEAD=$(git rev-list --count origin/main..origin/dev)
+          echo "ahead=$AHEAD" >> $GITHUB_OUTPUT
+          if [ "$AHEAD" -eq 0 ]; then
+            echo "dev esta em dia com main. Nada a fazer."
+          fi
+
+      - name: Auto-bump patch se necessario
+        if: steps.check-ahead.outputs.ahead != '0'
+        id: version
+        run: |
+          git checkout dev
+          git pull origin dev
+          CURRENT=$(cat VERSION)
+
+          git fetch --tags origin
+          if git tag --list | grep -q "^v${CURRENT}$"; then
+            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            PATCH=$(echo "$CURRENT" | cut -d. -f3)
+            NEW_PATCH=$((PATCH + 1))
+            NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+            echo "$NEW_VERSION" > VERSION
+            git add VERSION
+            git commit -m "SCRUM-197 chore: auto-bump version to ${NEW_VERSION}"
+            git push origin dev
+            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Gerar body do PR
+        if: steps.check-ahead.outputs.ahead != '0'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LAST_TAG" ]; then
+            CHANGELOG=$(git log origin/main..origin/dev --no-merges --format="- %s" | head -20)
+          else
+            CHANGELOG=$(git log "${LAST_TAG}..origin/dev" --no-merges --format="- %s" | head -20)
+          fi
+
+          {
+            echo "## Release v${VERSION} - ${DATE}"
+            echo ""
+            echo "### Commits nesta release"
+            echo "$CHANGELOG"
+            echo ""
+            echo "---"
+            echo "Release gerado automaticamente pelo workflow semanal."
+          } > /tmp/pr-body.md
+
+      - name: Criar PR dev -> main
+        if: steps.check-ahead.outputs.ahead != '0'
+        id: create-pr
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+
+          EXISTING_PR=$(gh pr list --base main --head dev --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #${EXISTING_PR} ja existe. Usando PR existente."
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+          else
+            PR_URL=$(gh pr create \
+              --base main \
+              --head dev \
+              --title "[Release] v${VERSION} - ${DATE}" \
+              --label "weekly-release" \
+              --body-file /tmp/pr-body.md)
+            PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "PR criado: $PR_URL"
+          fi
+
+      - name: Aguardar CI e fazer merge
+        if: steps.check-ahead.outputs.ahead != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.create-pr.outputs.pr_number }}"
+          echo "Aguardando checks do CI para PR #${PR_NUMBER}..."
+          sleep 15
+          gh pr checks "$PR_NUMBER" --watch --interval 30
+          echo "CI passou. Executando merge..."
+          gh pr merge "$PR_NUMBER" --admin --merge
