@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.core.config import settings
 from app.core.session import Base
 
-import app.models.user, app.models.assessment, app.models.enterprise, app.models.menu, app.models.photo, app.models.reservation, app.models.notification
+import app.models.user, app.models.assessment, app.models.enterprise, app.models.menu, app.models.photo, app.models.reservation, app.models.notification, app.models.business_context, app.models.report
 
 config = context.config
 

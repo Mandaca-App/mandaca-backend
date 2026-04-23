@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: mandaca-backend-staging
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    branch: dev
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: APP_ENV
+        value: staging
+      - key: APP_DEBUG
+        value: "false"
+
+  - type: web
+    name: mandaca-backend-production
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    branch: main
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"

@@ -5,21 +5,40 @@ import app.models
 from app.core.config import settings
 from app.core.exceptions import (
     AddressNotFoundError,
+    AIReportGenerationError,
+    AIReportNotFoundError,
     AudioRateLimitError,
     AudioServiceConnectionError,
     AudioServiceTimeoutError,
     AudioTooLargeError,
     AudioTranscriptionError,
+    BusinessContextNotFoundError,
+    ChatRateLimitError,
+    ChatServiceConnectionError,
+    ChatServiceError,
+    ChatServiceTimeoutError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     GeocodingUnavailableError,
+    InvalidContextDataError,
     MandacaError,
     UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
     UserNotFoundError,
 )
-from app.routers import assessments, enterprises, notifications, photos, transcriptions, users
+from app.routers import (
+    assessments,
+    business_context,
+    chat,
+    enterprises,
+    menus,
+    notifications,
+    photos,
+    reports,
+    transcriptions,
+    users,
+)
 
 app = FastAPI(title="Meu Projeto", version="0.1.0")
 
@@ -29,19 +48,29 @@ app.include_router(photos.router)
 app.include_router(notifications.router)
 app.include_router(transcriptions.router)
 app.include_router(assessments.router)
+app.include_router(chat.router)
+app.include_router(menus.router)
+app.include_router(business_context.router)
+app.include_router(reports.router)
 
 
 # ---------------------------------------------------------------------------
 # Handlers de exceções de domínio — conversão domínio → HTTP única e central
 # ---------------------------------------------------------------------------
 
-_NOT_FOUND_TYPES = (EnterpriseNotFoundError, UserNotFoundError)
+_NOT_FOUND_TYPES = (EnterpriseNotFoundError, UserNotFoundError, AIReportNotFoundError)
 _BAD_REQUEST_TYPES = (
     DuplicateEnterpriseNameError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
 )
-_BAD_GATEWAY_TYPES = (AudioServiceConnectionError, AudioTranscriptionError)
+_BAD_GATEWAY_TYPES = (
+    AudioServiceConnectionError,
+    AudioTranscriptionError,
+    ChatServiceConnectionError,
+    ChatServiceError,
+    AIReportGenerationError,
+)
 
 
 async def _handle_400(request: Request, exc: MandacaError) -> JSONResponse:
@@ -93,6 +122,10 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(UnsupportedAudioFormatError, _handle_415)
     fastapi_app.add_exception_handler(AudioRateLimitError, _handle_429)
     fastapi_app.add_exception_handler(AudioServiceTimeoutError, _handle_504)
+    fastapi_app.add_exception_handler(ChatRateLimitError, _handle_429)
+    fastapi_app.add_exception_handler(ChatServiceTimeoutError, _handle_504)
+    fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404)
+    fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
 
 
 _register_handlers(app)

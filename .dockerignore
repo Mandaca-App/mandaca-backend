@@ -1,0 +1,14 @@
+.git
+.env
+.env.local
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov/
+docs/
+dist/
+build/
+*.egg-info

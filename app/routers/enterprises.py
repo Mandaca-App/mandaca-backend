@@ -60,3 +60,12 @@ async def update_enterprise(
     db: Session = Depends(get_db),
 ) -> EnterpriseResponse:
     return await enterprise_service.update(enterprise_id, payload, db)
+
+
+@router.delete("/{enterprise_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_enterprise(
+    enterprise_id: UUID,
+    db: Session = Depends(get_db),
+) -> None:
+    enterprise_service.delete(enterprise_id, db)
+    return None

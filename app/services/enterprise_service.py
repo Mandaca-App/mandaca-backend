@@ -144,6 +144,13 @@ async def update(enterprise_id: UUID, payload: EnterpriseUpdate, db: Session) ->
     return enterprise
 
 
+def delete(enterprise_id: UUID, db: Session) -> None:
+    """Remove uma empresa pelo ID."""
+    enterprise = get_by_id(enterprise_id, db)
+    db.delete(enterprise)
+    db.commit()
+
+
 def get_percentage(enterprise_id: UUID, db: Session) -> EnterprisePercentageResponse:
     """Calcula e retorna a porcentagem de preenchimento do perfil da empresa."""
     enterprise = get_by_id(enterprise_id, db)

@@ -88,3 +88,73 @@ class AudioServiceTimeoutError(MandacaError):
 class AudioTranscriptionError(MandacaError):
     def __init__(self, detail: str) -> None:
         super().__init__(f"Falha na transcrição do áudio: {detail}")
+
+
+# ---------------------------------------------------------------------------
+# Exceções de chat (chat_service)
+# ---------------------------------------------------------------------------
+
+
+class ChatRateLimitError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Limite de requisições da API de chat atingido. Tente novamente.")
+
+
+class ChatServiceTimeoutError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("A API de chat demorou demais para responder. Tente novamente.")
+
+
+class ChatServiceConnectionError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Não foi possível conectar à API de chat. Tente novamente.")
+
+
+class ChatServiceError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Erro inesperado na API de chat. Tente novamente.")
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Menu (menu_service)
+# ---------------------------------------------------------------------------
+
+
+class MenuNotFoundError(MandacaError):
+    def __init__(self, menu_id: UUID | str) -> None:
+        super().__init__(f"Cardápio não encontrado: {menu_id}")
+        self.menu_id = menu_id
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Contexto de Negócio (business_context_service)
+# ---------------------------------------------------------------------------
+
+
+class BusinessContextNotFoundError(MandacaError):
+    def __init__(self, context_id: UUID | str) -> None:
+        super().__init__(f"Contexto de negócio não encontrado: {context_id}")
+        self.context_id = context_id
+
+
+class InvalidContextDataError(MandacaError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"dados_contexto inválido: {detail}")
+        self.detail = detail
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Relatório IA (report_service)
+# ---------------------------------------------------------------------------
+
+
+class AIReportNotFoundError(MandacaError):
+    def __init__(self, report_id: UUID | str) -> None:
+        super().__init__(f"Relatório IA não encontrado: {report_id}")
+        self.report_id = report_id
+
+
+class AIReportGenerationError(MandacaError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"Falha ao gerar relatório IA: {detail}")
+        self.detail = detail
