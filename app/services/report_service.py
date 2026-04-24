@@ -10,10 +10,10 @@ from app.core.config import settings
 from app.core.exceptions import (
     AIReportGenerationError,
     AIReportNotFoundError,
-    BusinessContextNotFoundError,
 )
 from app.models.report import AIReport
 from app.services.business_context_service import BusinessContextService
+from app.services.context_validation_service import ContextValidationService
 
 _SYSTEM_PROMPT = (
     "Você é um analista de negócios especializado em gastronomia e turismo no Nordeste do Brasil. "
@@ -39,17 +39,30 @@ class ReportService:
         self,
         gemini_client: genai.Client | None = None,
         context_service: BusinessContextService | None = None,
+        context_validation_service: ContextValidationService | None = None,
     ) -> None:
         self._gemini_client = gemini_client or genai.Client(api_key=settings.gemini_api_key)
         self._context_service = context_service or BusinessContextService()
+        self._context_validation_service = context_validation_service or ContextValidationService(
+            context_service=self._context_service
+        )
 
     def generate_report(self, empresa_id: UUID, db: Session) -> AIReport:
-        contextos = self._context_service.list_by_enterprise(empresa_id, db)
-        if not contextos:
-            raise BusinessContextNotFoundError(f"nenhum contexto salvo para a empresa {empresa_id}")
+        validation = self._context_validation_service.validate_for_report(empresa_id, db)
+        if not validation.context_changed and validation.reusable_report is not None:
+            return validation.reusable_report
 
-        contexto = contextos[0]
-        context_str = json.dumps(contexto.dados_contexto, ensure_ascii=False)
+        contexto = validation.saved_context
+        dados_contexto = contexto.dados_contexto
+        if validation.context_changed:
+            contexto = self._context_service.create_from_snapshot(
+                empresa_id,
+                validation.current_context_data,
+                db,
+            )
+            dados_contexto = validation.current_context_data
+
+        context_str = json.dumps(dados_contexto, ensure_ascii=False)
 
         try:
             response = self._gemini_client.models.generate_content(

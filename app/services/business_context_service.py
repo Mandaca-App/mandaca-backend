@@ -23,6 +23,10 @@ class BusinessContextService:
         serialized = json.dumps(dados, ensure_ascii=False, sort_keys=True)
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
+    def compute_hash(self, dados: Any) -> str:
+        """Retorna o hash SHA-256 deterministico de um contexto."""
+        return self._compute_hash(dados)
+
     def _persist(self, empresa_id: UUID, dados: Any, db: Session) -> BusinessContext:
         """Persiste um BusinessContext a partir de um dict já validado."""
         context = BusinessContext(
@@ -66,6 +70,16 @@ class BusinessContextService:
 
         dados = BusinessContextBuilderService().build_snapshot(empresa_id, db)
         return self._persist(empresa_id, dados, db)
+
+    def create_from_snapshot(
+        self, empresa_id: UUID, dados_contexto: Any, db: Session
+    ) -> BusinessContext:
+        """Persiste um snapshot de contexto ja montado."""
+        enterprise = db.get(Enterprise, empresa_id)
+        if not enterprise:
+            raise EnterpriseNotFoundError(empresa_id)
+
+        return self._persist(empresa_id, dados_contexto, db)
 
     def update(
         self, context_id: UUID, payload: BusinessContextUpdate, db: Session

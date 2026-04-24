@@ -20,6 +20,7 @@ from app.core.exceptions import (
 )
 from app.models.business_context import BusinessContext
 from app.models.report import AIReport
+from app.services.context_validation_service import ContextValidationResult
 
 # ---------------------------------------------------------------------------
 # Constantes
@@ -105,6 +106,26 @@ def _mock_context_service(contexts: list) -> MagicMock:
     return svc
 
 
+def _mock_validation_service(
+    context: BusinessContext,
+    *,
+    context_changed: bool = False,
+    current_context_data: dict | None = None,
+    reusable_report: AIReport | None = None,
+) -> MagicMock:
+    svc = MagicMock()
+    svc.validate_for_report.return_value = ContextValidationResult(
+        context_changed=context_changed,
+        saved_context=context,
+        current_context_data=(
+            current_context_data if current_context_data is not None else context.dados_contexto
+        ),
+        current_context_hash=context.hash_contexto,
+        reusable_report=reusable_report,
+    )
+    return svc
+
+
 # ---------------------------------------------------------------------------
 # generate_report
 # ---------------------------------------------------------------------------
@@ -119,8 +140,13 @@ def test_given_valid_empresa_when_generate_then_returns_report():
     db.refresh = MagicMock()
     gemini = _mock_gemini_client()
     ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx)
 
-    service = ReportService(gemini_client=gemini, context_service=ctx_svc)
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
 
     # WHEN
     result = service.generate_report(FAKE_EMPRESA_ID, db)
@@ -140,8 +166,13 @@ def test_given_valid_empresa_when_generate_then_persists_all_fields():
     db.refresh = MagicMock()
     gemini = _mock_gemini_client()
     ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx)
 
-    service = ReportService(gemini_client=gemini, context_service=ctx_svc)
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
 
     # WHEN
     result = service.generate_report(FAKE_EMPRESA_ID, db)
@@ -169,8 +200,16 @@ def test_given_empresa_no_context_when_generate_then_raises_not_found():
     db = _mock_db()
     gemini = _mock_gemini_client()
     ctx_svc = _mock_context_service([])
+    validation_svc = MagicMock()
+    validation_svc.validate_for_report.side_effect = BusinessContextNotFoundError(
+        f"nenhum contexto salvo para a empresa {FAKE_EMPRESA_ID}"
+    )
 
-    service = ReportService(gemini_client=gemini, context_service=ctx_svc)
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
 
     # WHEN / THEN
     with pytest.raises(BusinessContextNotFoundError):
@@ -186,8 +225,14 @@ def test_given_invalid_empresa_when_generate_then_raises_not_found():
     gemini = _mock_gemini_client()
     ctx_svc = MagicMock()
     ctx_svc.list_by_enterprise.side_effect = EnterpriseNotFoundError(FAKE_EMPRESA_ID)
+    validation_svc = MagicMock()
+    validation_svc.validate_for_report.side_effect = EnterpriseNotFoundError(FAKE_EMPRESA_ID)
 
-    service = ReportService(gemini_client=gemini, context_service=ctx_svc)
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
 
     # WHEN / THEN
     with pytest.raises(EnterpriseNotFoundError):
@@ -203,12 +248,78 @@ def test_given_gemini_error_when_generate_then_raises_generation_error():
     gemini = _mock_gemini_client()
     gemini.models.generate_content.side_effect = Exception("API unavailable")
     ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx)
 
-    service = ReportService(gemini_client=gemini, context_service=ctx_svc)
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
 
     # WHEN / THEN
     with pytest.raises(AIReportGenerationError):
         service.generate_report(FAKE_EMPRESA_ID, db)
+
+
+def test_given_unchanged_context_with_existing_report_when_generate_then_reuses_report():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    existing_report = _make_report()
+    db = _mock_db()
+    gemini = _mock_gemini_client()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, reusable_report=existing_report)
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    assert result is existing_report
+    gemini.models.generate_content.assert_not_called()
+    db.add.assert_not_called()
+    db.commit.assert_not_called()
+
+
+def test_given_changed_context_when_generate_then_persists_new_context_before_report():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    old_ctx = _make_context(dados_contexto={"nome": "Antigo"})
+    new_ctx = _make_context(id_contexto=uuid.uuid4(), dados_contexto=FAKE_DADOS_CONTEXTO)
+    db = _mock_db()
+    gemini = _mock_gemini_client()
+    ctx_svc = _mock_context_service([old_ctx])
+    ctx_svc.create_from_snapshot.return_value = new_ctx
+    validation_svc = _mock_validation_service(
+        old_ctx,
+        context_changed=True,
+        current_context_data=FAKE_DADOS_CONTEXTO,
+    )
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    ctx_svc.create_from_snapshot.assert_called_once_with(
+        FAKE_EMPRESA_ID,
+        FAKE_DADOS_CONTEXTO,
+        db,
+    )
+    assert result.contexto_id == new_ctx.id_contexto
 
 
 # ---------------------------------------------------------------------------
