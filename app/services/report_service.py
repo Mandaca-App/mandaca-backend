@@ -11,9 +11,13 @@ from app.core.exceptions import (
     AIReportGenerationError,
     AIReportNotFoundError,
 )
+from app.models.business_context import BusinessContext
 from app.models.report import AIReport
 from app.services.business_context_service import BusinessContextService
-from app.services.context_validation_service import ContextValidationService
+from app.services.context_validation_service import (
+    ContextValidationResult,
+    ContextValidationService,
+)
 
 _SYSTEM_PROMPT = (
     "Você é um analista de negócios especializado em gastronomia e turismo no Nordeste do Brasil. "
@@ -52,32 +56,8 @@ class ReportService:
         if not validation.context_changed and validation.reusable_report is not None:
             return validation.reusable_report
 
-        contexto = validation.saved_context
-        dados_contexto = contexto.dados_contexto
-        if validation.context_changed:
-            contexto = self._context_service.create_from_snapshot(
-                empresa_id,
-                validation.current_context_data,
-                db,
-            )
-            dados_contexto = validation.current_context_data
-
-        context_str = json.dumps(dados_contexto, ensure_ascii=False)
-
-        try:
-            response = self._gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=f"Contexto do negócio:\n{context_str}",
-                config={
-                    "system_instruction": _SYSTEM_PROMPT,
-                    "response_mime_type": "application/json",
-                    "response_json_schema": _AIReportLLMOutput.model_json_schema(),
-                    "temperature": 0.2,
-                },
-            )
-            parsed = _AIReportLLMOutput.model_validate_json(response.text)
-        except Exception as exc:
-            raise AIReportGenerationError(str(exc)) from exc
+        contexto, dados_contexto = self._resolve_context(validation, empresa_id, db)
+        parsed = self._invoke_llm(dados_contexto)
 
         report = AIReport(
             empresa_id=empresa_id,
@@ -93,6 +73,40 @@ class ReportService:
         db.commit()
         db.refresh(report)
         return report
+
+    def _resolve_context(
+        self, validation: ContextValidationResult, empresa_id: UUID, db: Session
+    ) -> tuple[BusinessContext, dict]:
+        if not validation.context_changed:
+            if validation.saved_context is None:
+                raise AIReportGenerationError("contexto salvo ausente para contexto inalterado")
+            return validation.saved_context, validation.saved_context.dados_contexto
+
+        contexto = self._context_service.create_from_snapshot(
+            empresa_id,
+            validation.current_context_data,
+            validation.current_context_hash,
+            db,
+        )
+        return contexto, validation.current_context_data
+
+    def _invoke_llm(self, dados_contexto: dict) -> _AIReportLLMOutput:
+        context_str = json.dumps(dados_contexto, ensure_ascii=False)
+
+        try:
+            response = self._gemini_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=f"Contexto do negócio:\n{context_str}",
+                config={
+                    "system_instruction": _SYSTEM_PROMPT,
+                    "response_mime_type": "application/json",
+                    "response_json_schema": _AIReportLLMOutput.model_json_schema(),
+                    "temperature": 0.2,
+                },
+            )
+            return _AIReportLLMOutput.model_validate_json(response.text)
+        except Exception as exc:
+            raise AIReportGenerationError(str(exc)) from exc
 
     def get_by_id(self, report_id: UUID, db: Session) -> AIReport:
         report = db.get(AIReport, report_id)

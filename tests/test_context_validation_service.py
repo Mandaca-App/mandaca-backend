@@ -2,9 +2,6 @@ import uuid
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-import pytest
-
-from app.core.exceptions import BusinessContextNotFoundError
 from app.models.business_context import BusinessContext
 from app.models.report import AIReport
 from app.services.business_context_service import BusinessContextService
@@ -118,13 +115,19 @@ def test_given_same_context_when_validate_then_reuses_existing_report():
     assert result.reusable_report is report
 
 
-def test_given_no_saved_context_when_validate_then_raises_not_found():
+def test_given_no_saved_context_when_validate_then_returns_changed_snapshot():
     # GIVEN
     service = ContextValidationService(
         context_service=_mock_context_service([]),
         context_builder=_mock_builder(FAKE_DADOS),
     )
 
-    # WHEN / THEN
-    with pytest.raises(BusinessContextNotFoundError):
-        service.validate_for_report(FAKE_EMPRESA_ID, _mock_db())
+    # WHEN
+    result = service.validate_for_report(FAKE_EMPRESA_ID, _mock_db())
+
+    # THEN
+    assert result.context_changed is True
+    assert result.saved_context is None
+    assert result.current_context_data == FAKE_DADOS
+    assert len(result.current_context_hash) == 64
+    assert result.reusable_report is None

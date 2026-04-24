@@ -16,7 +16,6 @@ import pytest
 from app.core.exceptions import (
     AIReportGenerationError,
     AIReportNotFoundError,
-    BusinessContextNotFoundError,
 )
 from app.models.business_context import BusinessContext
 from app.models.report import AIReport
@@ -107,10 +106,11 @@ def _mock_context_service(contexts: list) -> MagicMock:
 
 
 def _mock_validation_service(
-    context: BusinessContext,
+    context: BusinessContext | None,
     *,
     context_changed: bool = False,
     current_context_data: dict | None = None,
+    current_context_hash: str | None = None,
     reusable_report: AIReport | None = None,
 ) -> MagicMock:
     svc = MagicMock()
@@ -118,9 +118,15 @@ def _mock_validation_service(
         context_changed=context_changed,
         saved_context=context,
         current_context_data=(
-            current_context_data if current_context_data is not None else context.dados_contexto
+            current_context_data
+            if current_context_data is not None
+            else context.dados_contexto if context is not None else FAKE_DADOS_CONTEXTO
         ),
-        current_context_hash=context.hash_contexto,
+        current_context_hash=(
+            current_context_hash
+            if current_context_hash is not None
+            else context.hash_contexto if context is not None else "b" * 64
+        ),
         reusable_report=reusable_report,
     )
     return svc
@@ -193,16 +199,19 @@ def test_given_valid_empresa_when_generate_then_persists_all_fields():
     db.commit.assert_called_once()
 
 
-def test_given_empresa_no_context_when_generate_then_raises_not_found():
+def test_given_empresa_no_context_when_generate_then_persists_first_context_before_report():
     # GIVEN
     from app.services.report_service import ReportService
 
     db = _mock_db()
     gemini = _mock_gemini_client()
+    new_ctx = _make_context(id_contexto=uuid.uuid4(), dados_contexto=FAKE_DADOS_CONTEXTO)
     ctx_svc = _mock_context_service([])
-    validation_svc = MagicMock()
-    validation_svc.validate_for_report.side_effect = BusinessContextNotFoundError(
-        f"nenhum contexto salvo para a empresa {FAKE_EMPRESA_ID}"
+    ctx_svc.create_from_snapshot.return_value = new_ctx
+    validation_svc = _mock_validation_service(
+        None,
+        context_changed=True,
+        current_context_data=FAKE_DADOS_CONTEXTO,
     )
 
     service = ReportService(
@@ -211,9 +220,17 @@ def test_given_empresa_no_context_when_generate_then_raises_not_found():
         context_validation_service=validation_svc,
     )
 
-    # WHEN / THEN
-    with pytest.raises(BusinessContextNotFoundError):
-        service.generate_report(FAKE_EMPRESA_ID, db)
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    ctx_svc.create_from_snapshot.assert_called_once_with(
+        FAKE_EMPRESA_ID,
+        FAKE_DADOS_CONTEXTO,
+        "b" * 64,
+        db,
+    )
+    assert result.contexto_id == new_ctx.id_contexto
 
 
 def test_given_invalid_empresa_when_generate_then_raises_not_found():
@@ -302,6 +319,7 @@ def test_given_changed_context_when_generate_then_persists_new_context_before_re
         old_ctx,
         context_changed=True,
         current_context_data=FAKE_DADOS_CONTEXTO,
+        current_context_hash="b" * 64,
     )
 
     service = ReportService(
@@ -317,6 +335,7 @@ def test_given_changed_context_when_generate_then_persists_new_context_before_re
     ctx_svc.create_from_snapshot.assert_called_once_with(
         FAKE_EMPRESA_ID,
         FAKE_DADOS_CONTEXTO,
+        "b" * 64,
         db,
     )
     assert result.contexto_id == new_ctx.id_contexto
