@@ -158,3 +158,26 @@ class AIReportGenerationError(MandacaError):
     def __init__(self, detail: str) -> None:
         super().__init__(f"Falha ao gerar relatório IA: {detail}")
         self.detail = detail
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Auto Apply (auto_apply_service)
+# ---------------------------------------------------------------------------
+
+
+class FieldNotAllowedError(MandacaError):
+    def __init__(self, campo: str) -> None:
+        super().__init__(f"Campo não permitido para alteração automática: {campo}")
+        self.campo = campo
+
+
+class InvalidFieldValueError(MandacaError):
+    def __init__(self, campo: str, detail: str) -> None:
+        super().__init__(f"Valor inválido para o campo {campo}: {detail}")
+        self.campo = campo
+        self.detail = detail
+
+
+class AutoApplyPersistenceError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Falha ao aplicar alteração no banco de dados.")
