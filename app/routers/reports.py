@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.session import get_db
 from app.models.report import AIReport
+from app.schemas.auto_apply import ReportAutoApplyResponse
 from app.schemas.reports import AIReportDetail, AIReportSummary
+from app.services.report_auto_apply_service import ReportAutoApplyService
 from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -13,6 +15,10 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 def get_report_service() -> ReportService:
     return ReportService()
+
+
+def get_report_auto_apply_service() -> ReportAutoApplyService:
+    return ReportAutoApplyService()
 
 
 @router.post(
@@ -44,3 +50,16 @@ async def get_report(
     service: ReportService = Depends(get_report_service),
 ) -> AIReport:
     return service.get_by_id(report_id, db)
+
+
+@router.post(
+    "/{report_id}/auto-apply",
+    response_model=ReportAutoApplyResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def auto_apply_from_report(
+    report_id: UUID,
+    db: Session = Depends(get_db),
+    service: ReportAutoApplyService = Depends(get_report_auto_apply_service),
+) -> ReportAutoApplyResponse:
+    return service.apply_from_report(report_id, db)
