@@ -18,17 +18,19 @@ from app.services.business_context_builder_service import BusinessContextBuilder
 
 class BusinessContextService:
 
-    def _compute_hash(self, dados: Any) -> str:
+    def compute_hash(self, dados: Any) -> str:
         """Serializa os dados de forma determinística e retorna o SHA-256 hex."""
         serialized = json.dumps(dados, ensure_ascii=False, sort_keys=True)
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
-    def _persist(self, empresa_id: UUID, dados: Any, db: Session) -> BusinessContext:
+    def _persist(
+        self, empresa_id: UUID, dados: Any, hash_contexto: str, db: Session
+    ) -> BusinessContext:
         """Persiste um BusinessContext a partir de um dict já validado."""
         context = BusinessContext(
             empresa_id=empresa_id,
             dados_contexto=dados,
-            hash_contexto=self._compute_hash(dados),
+            hash_contexto=hash_contexto,
         )
         db.add(context)
         db.commit()
@@ -65,7 +67,17 @@ class BusinessContextService:
             raise EnterpriseNotFoundError(empresa_id)
 
         dados = BusinessContextBuilderService().build_snapshot(empresa_id, db)
-        return self._persist(empresa_id, dados, db)
+        return self._persist(empresa_id, dados, self.compute_hash(dados), db)
+
+    def create_from_snapshot(
+        self, empresa_id: UUID, dados_contexto: Any, hash_contexto: str, db: Session
+    ) -> BusinessContext:
+        """Persiste um snapshot de contexto ja montado."""
+        enterprise = db.get(Enterprise, empresa_id)
+        if not enterprise:
+            raise EnterpriseNotFoundError(empresa_id)
+
+        return self._persist(empresa_id, dados_contexto, hash_contexto, db)
 
     def update(
         self, context_id: UUID, payload: BusinessContextUpdate, db: Session
@@ -75,7 +87,7 @@ class BusinessContextService:
 
         if payload.dados_contexto is not None:
             context.dados_contexto = payload.dados_contexto
-            context.hash_contexto = self._compute_hash(payload.dados_contexto)
+            context.hash_contexto = self.compute_hash(payload.dados_contexto)
 
         db.commit()
         db.refresh(context)
