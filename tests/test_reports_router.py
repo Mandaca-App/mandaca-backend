@@ -17,10 +17,18 @@ from app.core.exceptions import (
     AIReportGenerationError,
     AIReportNotFoundError,
     BusinessContextNotFoundError,
+    SuggestionExtractionError,
 )
 from app.main import app
 from app.models.report import AIReport
-from app.routers.reports import get_report_service
+from app.routers.reports import get_report_auto_apply_service, get_report_service
+from app.schemas.auto_apply import (
+    AutoApplySuggestion,
+    AutoApplySuggestionResult,
+    AutoApplyTarget,
+    ReportAutoApplyResponse,
+    SuggestionStatus,
+)
 
 FAKE_REPORT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 FAKE_EMPRESA_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
@@ -238,6 +246,82 @@ def test_given_report_not_found_when_get_by_id_then_returns_404():
 def test_given_invalid_uuid_when_get_by_id_then_returns_422():
     # WHEN
     response = TestClient(app, raise_server_exceptions=False).get("/reports/not-a-uuid")
+
+    # THEN
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# POST /reports/{report_id}/auto-apply
+# ---------------------------------------------------------------------------
+
+
+def _make_auto_apply_client(mock_service: MagicMock) -> TestClient:
+    app.dependency_overrides[get_report_auto_apply_service] = lambda: mock_service
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def test_given_valid_report_when_auto_apply_then_returns_200():
+    # GIVEN
+    mock_service = MagicMock()
+    mock_service.apply_from_report.return_value = ReportAutoApplyResponse(
+        report_id=FAKE_REPORT_ID,
+        total=1,
+        aplicadas=1,
+        rejeitadas=0,
+        resultados=[
+            AutoApplySuggestionResult(
+                sugestao=AutoApplySuggestion(
+                    target=AutoApplyTarget.ENTERPRISE,
+                    campo_para_alterar="telefone",
+                    novo_valor="81999990000",
+                ),
+                status=SuggestionStatus.APPLIED,
+            )
+        ],
+    )
+    client = _make_auto_apply_client(mock_service)
+
+    # WHEN
+    response = client.post(f"/reports/{FAKE_REPORT_ID}/auto-apply")
+
+    # THEN
+    assert response.status_code == 200
+    body = response.json()
+    assert body["report_id"] == str(FAKE_REPORT_ID)
+    assert body["aplicadas"] == 1
+    assert body["rejeitadas"] == 0
+
+
+def test_given_missing_report_when_auto_apply_then_returns_404():
+    # GIVEN
+    mock_service = MagicMock()
+    mock_service.apply_from_report.side_effect = AIReportNotFoundError(FAKE_REPORT_ID)
+    client = _make_auto_apply_client(mock_service)
+
+    # WHEN
+    response = client.post(f"/reports/{FAKE_REPORT_ID}/auto-apply")
+
+    # THEN
+    assert response.status_code == 404
+
+
+def test_given_llm_failure_when_auto_apply_then_returns_502():
+    # GIVEN
+    mock_service = MagicMock()
+    mock_service.apply_from_report.side_effect = SuggestionExtractionError("api down")
+    client = _make_auto_apply_client(mock_service)
+
+    # WHEN
+    response = client.post(f"/reports/{FAKE_REPORT_ID}/auto-apply")
+
+    # THEN
+    assert response.status_code == 502
+
+
+def test_given_invalid_uuid_when_auto_apply_then_returns_422():
+    # WHEN
+    response = TestClient(app, raise_server_exceptions=False).post("/reports/not-a-uuid/auto-apply")
 
     # THEN
     assert response.status_code == 422

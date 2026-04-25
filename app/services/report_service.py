@@ -24,7 +24,17 @@ _SYSTEM_PROMPT = (
     "Analise o contexto do negócio fornecido e gere um relatório estruturado em JSON com três "
     "seções: pontos_positivos, melhorias e recomendacoes. "
     "Cada seção deve ter duas versões: resumo (até 100 palavras) e detalhado (até 400 palavras). "
-    "Escreva em português brasileiro. Seja objetivo, construtivo e específico para o negócio. "
+    "Escreva em português brasileiro. Seja objetivo, construtivo e específico para o negócio.\n\n"
+    "DIRETRIZES PARA SUGESTÕES ACIONÁVEIS:\n"
+    "Sempre que possível, traga sugestões CONCRETAS com valores específicos a partir do contexto:\n"
+    "- Ao sugerir alteração de preço de um item, indique uma faixa de valor recomendada "
+    "(ex: 'reduzir o preço de R$ 89,99 para algo entre R$ 6,00 e R$ 9,00').\n"
+    "- Ao sugerir mudança de horário, proponha um intervalo concreto "
+    "(ex: 'abrir às 06:30 para atender o público do café da manhã').\n"
+    "- Ao sugerir nova história ou descrição de item, proponha um texto curto inspirador "
+    "que o estabelecimento poderia adotar.\n"
+    "Para dados que não podem ser inventados (telefone real, endereço físico real), "
+    "indique apenas que precisam ser corrigidos pelo usuário, sem propor valor.\n\n"
     "Retorne somente JSON compatível com o schema fornecido."
 )
 
