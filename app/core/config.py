@@ -3,15 +3,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str
+    supabase_url: str
+    supabase_service_role_key: str
+    groq_api_key: str
+    google_maps_api_key: str
     app_env: str = "development"
     secret_key: str = "dev-secret-key"
     app_debug: bool = True
+    gemini_api_key: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra = "ignore",
+        extra="ignore",
     )
+
 
 settings = Settings()
