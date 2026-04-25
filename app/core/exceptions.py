@@ -181,3 +181,9 @@ class InvalidFieldValueError(MandacaError):
 class AutoApplyPersistenceError(MandacaError):
     def __init__(self) -> None:
         super().__init__("Falha ao aplicar alteração no banco de dados.")
+
+
+class SuggestionExtractionError(MandacaError):
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"Falha ao extrair sugestões do relatório: {detail}")
+        self.detail = detail
