@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, model_validator
@@ -24,6 +23,32 @@ class AutoApplyRequest(BaseModel):
         return self
 
 
+class SuggestionStatus(str, Enum):
+    APPLIED = "aplicado"
+    REJECTED = "rejeitado"
+
+
 class AutoApplyResponse(BaseModel):
     campo_alterado: str
-    status: Literal["aplicado"]
+    status: SuggestionStatus = SuggestionStatus.APPLIED
+
+
+class AutoApplySuggestion(BaseModel):
+    target: AutoApplyTarget
+    menu_item_id: UUID | None = None
+    campo_para_alterar: str
+    novo_valor: str
+
+
+class AutoApplySuggestionResult(BaseModel):
+    sugestao: AutoApplySuggestion
+    status: SuggestionStatus
+    erro: str | None = None
+
+
+class ReportAutoApplyResponse(BaseModel):
+    report_id: UUID
+    total: int
+    aplicadas: int
+    rejeitadas: int
+    resultados: list[AutoApplySuggestionResult]
