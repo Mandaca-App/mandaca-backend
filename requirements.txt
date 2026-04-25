@@ -2,8 +2,7 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 alembic
-psycopg2
-psycopg[binary]
+psycopg2-binary
 pydantic-settings
 python-dotenv
 pytest
