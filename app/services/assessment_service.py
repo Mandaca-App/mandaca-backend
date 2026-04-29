@@ -109,9 +109,7 @@ class AssessmentService:
 
         if assessment_in.texto is not None:
             assessment.texto = assessment_in.texto
-            assessment.tipo_avaliacao = self.classify_assessment_text(
-                assessment_in.texto
-            )
+            assessment.tipo_avaliacao = self.classify_assessment_text(assessment_in.texto)
 
         db.commit()
         db.refresh(assessment)

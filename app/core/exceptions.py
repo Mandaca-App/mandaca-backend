@@ -138,11 +138,13 @@ class AssessmentNotFoundError(MandacaError):
 
 
 class AssessmentClassificationError(MandacaError):
-    def __init__(self, detail: str = "Não foi possível classificar a avaliação no momento.") -> None:
+    def __init__(
+        self, detail: str = "Não foi possível classificar a avaliação no momento."
+    ) -> None:
         super().__init__(detail)
         self.detail = detail
 
-        
+
 # ---------------------------------------------------------------------------
 # Exceções de Contexto de Negócio (business_context_service)
 # ---------------------------------------------------------------------------
