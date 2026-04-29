@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Optional
 from uuid import UUID
 
@@ -26,3 +27,4 @@ class AssessmentResponse(BaseModel):
     tipo_avaliacao: TipoAvaliacao
     usuario_id: UUID
     empresa_id: UUID
+    created_at: datetime

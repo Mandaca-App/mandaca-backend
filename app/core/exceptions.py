@@ -127,6 +127,23 @@ class MenuNotFoundError(MandacaError):
 
 
 # ---------------------------------------------------------------------------
+# Exceções de Avaliações (assessment_service)
+# ---------------------------------------------------------------------------
+
+
+class AssessmentNotFoundError(MandacaError):
+    def __init__(self, assessment_id: UUID | str) -> None:
+        super().__init__(f"Avaliação não encontrada: {assessment_id}")
+        self.assessment_id = assessment_id
+
+
+class AssessmentClassificationError(MandacaError):
+    def __init__(self, detail: str = "Não foi possível classificar a avaliação no momento.") -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+        
+# ---------------------------------------------------------------------------
 # Exceções de Contexto de Negócio (business_context_service)
 # ---------------------------------------------------------------------------
 
