@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.core.exceptions import AssessmentClassificationError
 from app.models.assessment import TipoAvaliacao
 from app.services.assessment_service import AssessmentService
 
@@ -74,7 +75,7 @@ def test_given_valid_model_output_when_classify_then_returns_enum(texto, tipo_av
     assert result == tipo_avaliacao
 
 
-def test_given_invalid_json_when_classify_then_raises_runtime_error():
+def test_given_invalid_json_when_classify_then_raises_domain_error():
     # GIVEN
     service = AssessmentService()
     client = _mock_gemini_client("isso nao e json")
@@ -84,11 +85,11 @@ def test_given_invalid_json_when_classify_then_raises_runtime_error():
         return_value=client,
     ):
         # WHEN / THEN
-        with pytest.raises(RuntimeError, match="Falha ao classificar a avaliação."):
+        with pytest.raises(AssessmentClassificationError, match="Não foi possível classificar"):
             service.classify_assessment_text(FAKE_TEXT_POSITIVO)
 
 
-def test_given_client_error_when_classify_then_raises_runtime_error():
+def test_given_client_error_when_classify_then_raises_domain_error():
     # GIVEN
     service = AssessmentService()
     client = MagicMock()
@@ -99,5 +100,5 @@ def test_given_client_error_when_classify_then_raises_runtime_error():
         return_value=client,
     ):
         # WHEN / THEN
-        with pytest.raises(RuntimeError, match="Falha ao classificar a avaliação."):
+        with pytest.raises(AssessmentClassificationError, match="Não foi possível classificar"):
             service.classify_assessment_text(FAKE_TEXT_POSITIVO)

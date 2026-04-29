@@ -7,6 +7,8 @@ from app.core.exceptions import (
     AddressNotFoundError,
     AIReportGenerationError,
     AIReportNotFoundError,
+    AssessmentClassificationError,
+    AssessmentNotFoundError,
     AudioRateLimitError,
     AudioServiceConnectionError,
     AudioServiceTimeoutError,
@@ -58,7 +60,12 @@ app.include_router(reports.router)
 # Handlers de exceções de domínio — conversão domínio → HTTP única e central
 # ---------------------------------------------------------------------------
 
-_NOT_FOUND_TYPES = (EnterpriseNotFoundError, UserNotFoundError, AIReportNotFoundError)
+_NOT_FOUND_TYPES = (
+    EnterpriseNotFoundError,
+    UserNotFoundError,
+    AIReportNotFoundError,
+    AssessmentNotFoundError,
+)
 _BAD_REQUEST_TYPES = (
     DuplicateEnterpriseNameError,
     UserAlreadyHasEnterpriseError,
@@ -71,6 +78,7 @@ _BAD_GATEWAY_TYPES = (
     ChatServiceError,
     AIReportGenerationError,
 )
+_SERVICE_UNAVAILABLE_TYPES = (AssessmentClassificationError,)
 
 
 async def _handle_400(request: Request, exc: MandacaError) -> JSONResponse:
@@ -116,6 +124,8 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
         fastapi_app.add_exception_handler(exc_class, _handle_400)
     for exc_class in _BAD_GATEWAY_TYPES:
         fastapi_app.add_exception_handler(exc_class, _handle_502)
+    for exc_class in _SERVICE_UNAVAILABLE_TYPES:
+        fastapi_app.add_exception_handler(exc_class, _handle_503)
     fastapi_app.add_exception_handler(AddressNotFoundError, _handle_422)
     fastapi_app.add_exception_handler(GeocodingUnavailableError, _handle_503)
     fastapi_app.add_exception_handler(AudioTooLargeError, _handle_413)
