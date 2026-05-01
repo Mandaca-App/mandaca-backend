@@ -1,8 +1,6 @@
-import json
 from uuid import UUID
 
 from google import genai
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,24 +16,6 @@ from app.services.context_validation_service import (
     ContextValidationResult,
     ContextValidationService,
 )
-
-_SYSTEM_PROMPT = (
-    "Você é um analista de negócios especializado em gastronomia e turismo no Nordeste do Brasil. "
-    "Analise o contexto do negócio fornecido e gere um relatório estruturado em JSON com três "
-    "seções: pontos_positivos, melhorias e recomendacoes. "
-    "Cada seção deve ter duas versões: resumo (até 100 palavras) e detalhado (até 400 palavras). "
-    "Escreva em português brasileiro. Seja objetivo, construtivo e específico para o negócio. "
-    "Retorne somente JSON compatível com o schema fornecido."
-)
-
-
-class _AIReportLLMOutput(BaseModel):
-    pontos_positivos_resumo: str
-    pontos_positivos_detalhado: str
-    melhorias_resumo: str
-    melhorias_detalhado: str
-    recomendacoes_resumo: str
-    recomendacoes_detalhado: str
 
 
 class ReportService:
@@ -56,18 +36,14 @@ class ReportService:
         if not validation.context_changed and validation.reusable_report is not None:
             return validation.reusable_report
 
-        contexto, dados_contexto = self._resolve_context(validation, empresa_id, db)
-        parsed = self._invoke_llm(dados_contexto)
+        contexto = self._resolve_context(validation, empresa_id, db)
 
         report = AIReport(
             empresa_id=empresa_id,
             contexto_id=contexto.id_contexto,
-            pontos_positivos_resumo=parsed.pontos_positivos_resumo,
-            pontos_positivos_detalhado=parsed.pontos_positivos_detalhado,
-            melhorias_resumo=parsed.melhorias_resumo,
-            melhorias_detalhado=parsed.melhorias_detalhado,
-            recomendacoes_resumo=parsed.recomendacoes_resumo,
-            recomendacoes_detalhado=parsed.recomendacoes_detalhado,
+            pontos_positivos=[],
+            melhorias=[],
+            recomendacoes=[],
         )
         db.add(report)
         db.commit()
@@ -76,37 +52,18 @@ class ReportService:
 
     def _resolve_context(
         self, validation: ContextValidationResult, empresa_id: UUID, db: Session
-    ) -> tuple[BusinessContext, dict]:
+    ) -> BusinessContext:
         if not validation.context_changed:
             if validation.saved_context is None:
                 raise AIReportGenerationError("contexto salvo ausente para contexto inalterado")
-            return validation.saved_context, validation.saved_context.dados_contexto
+            return validation.saved_context
 
-        contexto = self._context_service.create_from_snapshot(
+        return self._context_service.create_from_snapshot(
             empresa_id,
             validation.current_context_data,
             validation.current_context_hash,
             db,
         )
-        return contexto, validation.current_context_data
-
-    def _invoke_llm(self, dados_contexto: dict) -> _AIReportLLMOutput:
-        context_str = json.dumps(dados_contexto, ensure_ascii=False)
-
-        try:
-            response = self._gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=f"Contexto do negócio:\n{context_str}",
-                config={
-                    "system_instruction": _SYSTEM_PROMPT,
-                    "response_mime_type": "application/json",
-                    "response_json_schema": _AIReportLLMOutput.model_json_schema(),
-                    "temperature": 0.2,
-                },
-            )
-            return _AIReportLLMOutput.model_validate_json(response.text)
-        except Exception as exc:
-            raise AIReportGenerationError(str(exc)) from exc
 
     def get_by_id(self, report_id: UUID, db: Session) -> AIReport:
         report = db.get(AIReport, report_id)
