@@ -10,6 +10,7 @@ class AutoApplyTarget(str, Enum):
 
 
 class AutoApplySuggestion(BaseModel):
+    mensagem: str
     target: AutoApplyTarget
     menu_item_id: UUID | None = None
     campo_para_alterar: str
