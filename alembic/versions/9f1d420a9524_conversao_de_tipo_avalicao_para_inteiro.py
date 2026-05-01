@@ -41,43 +41,9 @@ def upgrade() -> None:
     # Remove o tipo ENUM do banco — não é mais necessário.
     op.execute("DROP TYPE IF EXISTS tipo_avaliacao_enum")
  
-    # --- relatorios_ia: JSONB → JSON ------------------------------------------
-    op.alter_column('relatorios_ia', 'pontos_positivos',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False,
-               existing_server_default=sa.text("'[]'::jsonb"))
-    op.alter_column('relatorios_ia', 'melhorias',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False,
-               existing_server_default=sa.text("'[]'::jsonb"))
-    op.alter_column('relatorios_ia', 'recomendacoes',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=False,
-               existing_server_default=sa.text("'[]'::jsonb"))
- 
  
 def downgrade() -> None:
     """Downgrade schema."""
- 
-    # --- relatorios_ia: JSON → JSONB ------------------------------------------
-    op.alter_column('relatorios_ia', 'recomendacoes',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False,
-               existing_server_default=sa.text("'[]'::jsonb"))
-    op.alter_column('relatorios_ia', 'melhorias',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False,
-               existing_server_default=sa.text("'[]'::jsonb"))
-    op.alter_column('relatorios_ia', 'pontos_positivos',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=False,
-               existing_server_default=sa.text("'[]'::jsonb"))
  
     # --- avaliacoes.tipo_avaliacao: INTEGER → ENUM ----------------------------
     # Recria o tipo ENUM antes de converter de volta.
