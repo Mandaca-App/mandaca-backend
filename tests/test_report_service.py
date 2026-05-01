@@ -12,10 +12,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.core.exceptions import (
-    AIReportGenerationError,
-    AIReportNotFoundError,
-)
+from app.core.exceptions import AIReportNotFoundError
 from app.models.business_context import BusinessContext
 from app.models.report import AIReport
 from app.services.context_validation_service import ContextValidationResult
