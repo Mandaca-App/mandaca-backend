@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.session import get_db
 from app.models.report import AIReport
-from app.schemas.reports import AIReportDetail, AIReportSummary
+from app.schemas.reports import AIReportResponse
 from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -17,7 +17,7 @@ def get_report_service() -> ReportService:
 
 @router.post(
     "/generate/{empresa_id}",
-    response_model=AIReportDetail,
+    response_model=AIReportResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def generate_report(
@@ -28,7 +28,7 @@ async def generate_report(
     return service.generate_report(empresa_id, db)
 
 
-@router.get("/by-enterprise/{empresa_id}", response_model=list[AIReportSummary])
+@router.get("/by-enterprise/{empresa_id}", response_model=list[AIReportResponse])
 async def list_reports_by_enterprise(
     empresa_id: UUID,
     db: Session = Depends(get_db),
@@ -37,7 +37,7 @@ async def list_reports_by_enterprise(
     return service.list_by_enterprise(empresa_id, db)
 
 
-@router.get("/{report_id}", response_model=AIReportDetail)
+@router.get("/{report_id}", response_model=AIReportResponse)
 async def get_report(
     report_id: UUID,
     db: Session = Depends(get_db),
