@@ -18,6 +18,14 @@ from app.models.enterprise import Enterprise
 from app.models.user import User
 from app.schemas.assessments import AssessmentCreate, AssessmentUpdate
 
+_TIPO_MAP: dict[str, TipoAvaliacao] = {
+    "positiva": TipoAvaliacao.POSITIVA,
+    "negativa": TipoAvaliacao.NEGATIVA,
+    "neutra": TipoAvaliacao.NEUTRA,
+    "sugestao": TipoAvaliacao.SUGESTAO,
+    "duvida": TipoAvaliacao.DUVIDA,
+}
+
 
 class AssessmentClassification(BaseModel):
     tipo_avaliacao: Literal["positiva", "negativa", "neutra", "sugestao", "duvida"]
@@ -47,7 +55,7 @@ class AssessmentService:
             )
 
             data = AssessmentClassification.model_validate_json(response.text)
-            return TipoAvaliacao(data.tipo_avaliacao)
+            return _TIPO_MAP[data.tipo_avaliacao]
 
         except Exception as exc:
             raise AssessmentClassificationError(
