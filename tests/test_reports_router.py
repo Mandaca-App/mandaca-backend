@@ -39,14 +39,9 @@ def _make_report(**kwargs) -> AIReport:
         id_relatorio=kwargs.get("id_relatorio", FAKE_REPORT_ID),
         empresa_id=kwargs.get("empresa_id", FAKE_EMPRESA_ID),
         contexto_id=kwargs.get("contexto_id", FAKE_CONTEXTO_ID),
-        pontos_positivos_resumo=kwargs.get("pontos_positivos_resumo", "Boa comida."),
-        pontos_positivos_detalhado=kwargs.get("pontos_positivos_detalhado", "Alta qualidade."),
-        melhorias_resumo=kwargs.get("melhorias_resumo", "Atendimento lento."),
-        melhorias_detalhado=kwargs.get("melhorias_detalhado", "Mais funcionários."),
-        recomendacoes_resumo=kwargs.get("recomendacoes_resumo", "Investir em marketing."),
-        recomendacoes_detalhado=kwargs.get(
-            "recomendacoes_detalhado", "Campanhas nas redes sociais."
-        ),
+        pontos_positivos=kwargs.get("pontos_positivos", []),
+        melhorias=kwargs.get("melhorias", []),
+        recomendacoes=kwargs.get("recomendacoes", []),
         criado_em=kwargs.get("criado_em", FAKE_CRIADO_EM),
     )
     return r
@@ -80,10 +75,10 @@ def test_given_valid_empresa_when_generate_then_returns_201():
     body = response.json()
     assert body["empresa_id"] == str(FAKE_EMPRESA_ID)
     assert body["contexto_id"] == str(FAKE_CONTEXTO_ID)
-    assert "pontos_positivos_detalhado" in body
+    assert "pontos_positivos" in body
 
 
-def test_given_valid_empresa_when_generate_then_returns_all_detail_fields():
+def test_given_report_when_generate_then_response_has_jsonb_fields():
     # GIVEN
     mock_service = _make_mock_service()
     mock_service.generate_report.return_value = _make_report()
@@ -94,10 +89,9 @@ def test_given_valid_empresa_when_generate_then_returns_all_detail_fields():
 
     # THEN
     body = response.json()
-    assert body["pontos_positivos_resumo"] == "Boa comida."
-    assert body["melhorias_resumo"] == "Atendimento lento."
-    assert body["recomendacoes_resumo"] == "Investir em marketing."
-    assert body["melhorias_detalhado"] == "Mais funcionários."
+    assert isinstance(body["pontos_positivos"], list)
+    assert isinstance(body["melhorias"], list)
+    assert isinstance(body["recomendacoes"], list)
 
 
 def test_given_no_context_when_generate_then_returns_404():
@@ -174,22 +168,6 @@ def test_given_no_reports_when_list_by_enterprise_then_returns_200_empty():
     assert response.json() == []
 
 
-def test_given_summary_fields_when_list_by_enterprise_then_excludes_detail_fields():
-    # GIVEN — AIReportSummary não expõe campos *_detalhado
-    mock_service = _make_mock_service()
-    mock_service.list_by_enterprise.return_value = [_make_report()]
-    client = _make_client(mock_service)
-
-    # WHEN
-    response = client.get(f"/reports/by-enterprise/{FAKE_EMPRESA_ID}")
-
-    # THEN
-    body = response.json()[0]
-    assert "pontos_positivos_detalhado" not in body
-    assert "melhorias_detalhado" not in body
-    assert "recomendacoes_detalhado" not in body
-
-
 def test_given_invalid_uuid_when_list_by_enterprise_then_returns_422():
     # WHEN
     response = TestClient(app, raise_server_exceptions=False).get(
@@ -218,7 +196,23 @@ def test_given_report_exists_when_get_by_id_then_returns_200():
     assert response.status_code == 200
     body = response.json()
     assert body["id_relatorio"] == str(FAKE_REPORT_ID)
-    assert "pontos_positivos_detalhado" in body
+    assert "pontos_positivos" in body
+
+
+def test_given_report_when_get_by_id_then_has_jsonb_fields():
+    # GIVEN
+    mock_service = _make_mock_service()
+    mock_service.get_by_id.return_value = _make_report()
+    client = _make_client(mock_service)
+
+    # WHEN
+    response = client.get(f"/reports/{FAKE_REPORT_ID}")
+
+    # THEN
+    body = response.json()
+    assert isinstance(body["pontos_positivos"], list)
+    assert isinstance(body["melhorias"], list)
+    assert isinstance(body["recomendacoes"], list)
 
 
 def test_given_report_not_found_when_get_by_id_then_returns_404():
