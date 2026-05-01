@@ -29,7 +29,7 @@ _NOW = datetime.now(timezone.utc)
 _ASSESSMENT_RESPONSE = SimpleNamespace(
     id_avaliacao=FAKE_ID,
     texto="Avaliação teste",
-    tipo_avaliacao=TipoAvaliacao.POSITIVA,
+    tipo_avaliacao=TipoAvaliacao.POSITIVA,  # 0
     usuario_id=USER_ID,
     empresa_id=ENTERPRISE_ID,
     created_at=_NOW,
@@ -38,7 +38,7 @@ _ASSESSMENT_RESPONSE = SimpleNamespace(
 _UPDATED_ASSESSMENT_RESPONSE = SimpleNamespace(
     id_avaliacao=FAKE_ID,
     texto="Piorou bastante.",
-    tipo_avaliacao=TipoAvaliacao.NEGATIVA,
+    tipo_avaliacao=TipoAvaliacao.NEGATIVA,  # 1
     usuario_id=USER_ID,
     empresa_id=ENTERPRISE_ID,
     created_at=_NOW,
@@ -48,7 +48,7 @@ _ASSESSMENTS_LIST = [
     SimpleNamespace(
         id_avaliacao=FAKE_ID,
         texto="Avaliação teste",
-        tipo_avaliacao=TipoAvaliacao.POSITIVA,
+        tipo_avaliacao=TipoAvaliacao.POSITIVA,  # 0
         usuario_id=USER_ID,
         empresa_id=ENTERPRISE_ID,
         created_at=_NOW,
@@ -77,7 +77,7 @@ def test_given_assessments_exist_when_list_then_returns_200(db_mock):
     data = response.json()
     assert len(data) == 1
     assert data[0]["texto"] == "Avaliação teste"
-    assert data[0]["tipo_avaliacao"] == "positiva"
+    assert data[0]["tipo_avaliacao"] == TipoAvaliacao.POSITIVA  # 0
     assert "created_at" in data[0]
 
 
@@ -91,7 +91,7 @@ def test_given_assessment_exists_when_get_by_id_then_returns_200(db_mock):
     assert response.status_code == 200
     data = response.json()
     assert data["id_avaliacao"] == str(FAKE_ID)
-    assert data["tipo_avaliacao"] == "positiva"
+    assert data["tipo_avaliacao"] == TipoAvaliacao.POSITIVA  # 0
     assert "created_at" in data
 
 
@@ -113,7 +113,7 @@ def test_given_valid_payload_when_create_then_returns_201(db_mock):
     data = response.json()
     assert data["id_avaliacao"] == str(FAKE_ID)
     assert data["texto"] == "Avaliação teste"
-    assert data["tipo_avaliacao"] == "positiva"
+    assert data["tipo_avaliacao"] == TipoAvaliacao.POSITIVA  # 0
     assert data["usuario_id"] == str(USER_ID)
     assert data["empresa_id"] == str(ENTERPRISE_ID)
     assert "created_at" in data
@@ -133,7 +133,7 @@ def test_given_valid_payload_when_update_text_then_returns_200(db_mock):
     data = response.json()
     assert data["id_avaliacao"] == str(FAKE_ID)
     assert data["texto"] == "Piorou bastante."
-    assert data["tipo_avaliacao"] == "negativa"
+    assert data["tipo_avaliacao"] == TipoAvaliacao.NEGATIVA  # 1
     assert "created_at" in data
 
 
