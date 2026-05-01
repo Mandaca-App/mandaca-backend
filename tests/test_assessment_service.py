@@ -60,7 +60,7 @@ def _mock_gemini_client(response_text: str) -> MagicMock:
 def test_given_valid_model_output_when_classify_then_returns_enum(texto, tipo_avaliacao):
     # GIVEN
     service = AssessmentService()
-    client = _mock_gemini_client(f'{{"tipo_avaliacao": "{tipo_avaliacao.value}"}}')
+    client = _mock_gemini_client(f'{{"tipo_avaliacao": "{tipo_avaliacao.name.lower()}"}}')
 
     with patch(
         "app.services.assessment_service.AssessmentService._get_gemini_client",

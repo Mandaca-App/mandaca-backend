@@ -2,19 +2,19 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.session import Base
 
 
-class TipoAvaliacao(str, enum.Enum):
-    POSITIVA = "positiva"
-    NEGATIVA = "negativa"
-    NEUTRA = "neutra"
-    SUGESTAO = "sugestao"
-    DUVIDA = "duvida"
+class TipoAvaliacao(int, enum.Enum):
+    POSITIVA = 0
+    NEGATIVA = 1
+    NEUTRA = 2
+    SUGESTAO = 3
+    DUVIDA = 4
 
 
 class Assessment(Base):
@@ -26,7 +26,7 @@ class Assessment(Base):
     texto: Mapped[str] = mapped_column(String(500), nullable=False)
 
     tipo_avaliacao: Mapped[TipoAvaliacao] = mapped_column(
-        Enum(TipoAvaliacao, name="tipo_avaliacao_enum"),
+        Integer,
         nullable=False,
         default=TipoAvaliacao.NEUTRA,
     )
