@@ -6,12 +6,18 @@ Estratégia: cliente Gemini completamente mockado.
 Não há chamadas de rede nestes testes.
 """
 
+import uuid
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import AssessmentClassificationError
-from app.models.assessment import TipoAvaliacao
+from app.core.exceptions import (
+    AssessmentClassificationError,
+    AssessmentPageEmptyError,
+    EnterpriseNotFoundError,
+)
+from app.models.assessment import Assessment, TipoAvaliacao
 from app.services.assessment_service import AssessmentService
 
 # ---------------------------------------------------------------------------
@@ -102,3 +108,74 @@ def test_given_client_error_when_classify_then_raises_domain_error():
         # WHEN / THEN
         with pytest.raises(AssessmentClassificationError, match="Não foi possível classificar"):
             service.classify_assessment_text(FAKE_TEXT_POSITIVO)
+
+
+def _make_assessment(empresa_id: uuid.UUID, offset_seconds: int = 0) -> Assessment:
+    a = Assessment()
+    a.id_avaliacao = uuid.uuid4()
+    a.texto = "Texto de teste"
+    a.tipo_avaliacao = TipoAvaliacao.NEUTRA
+    a.usuario_id = uuid.uuid4()
+    a.empresa_id = empresa_id
+    a.created_at = datetime(2024, 1, 1, 12, 0, offset_seconds, tzinfo=timezone.utc)
+    return a
+
+
+def test_given_enterprise_not_found_when_paginated_then_raises():
+    service = AssessmentService()
+    db = MagicMock()
+    db.get.return_value = None  # empresa não existe
+
+    with pytest.raises(EnterpriseNotFoundError):
+        service.list_by_enterprise_paginated(uuid.uuid4(), page=1, db=db)
+
+
+def test_given_empty_page_when_paginated_then_raises_page_empty():
+    service = AssessmentService()
+    db = MagicMock()
+    db.get.return_value = MagicMock()  # empresa existe
+
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = []  # página vazia
+    db.scalars.return_value = scalars_mock
+
+    with pytest.raises(AssessmentPageEmptyError) as exc_info:
+        service.list_by_enterprise_paginated(uuid.uuid4(), page=5, db=db)
+
+    assert exc_info.value.page == 5
+
+
+def test_given_exactly_10_assessments_when_paginated_then_has_more_false():
+    service = AssessmentService()
+    empresa_id = uuid.uuid4()
+    db = MagicMock()
+    db.get.return_value = MagicMock()
+
+    items = [_make_assessment(empresa_id, i) for i in range(10)]
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = items  # exatamente 10, sem o extra
+    db.scalars.return_value = scalars_mock
+
+    result = service.list_by_enterprise_paginated(empresa_id, page=1, db=db)
+
+    assert result["page"] == 1
+    assert len(result["items"]) == 10
+    assert result["has_more"] is False
+
+
+def test_given_11_assessments_when_paginated_page_1_then_has_more_true():
+    service = AssessmentService()
+    empresa_id = uuid.uuid4()
+    db = MagicMock()
+    db.get.return_value = MagicMock()
+
+    # 11 itens retornados do banco (PAGE_SIZE + 1 = sinal de que há mais)
+    items = [_make_assessment(empresa_id, i) for i in range(11)]
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = items
+    db.scalars.return_value = scalars_mock
+
+    result = service.list_by_enterprise_paginated(empresa_id, page=1, db=db)
+
+    assert result["has_more"] is True
+    assert len(result["items"]) == 10

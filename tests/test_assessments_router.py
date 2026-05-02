@@ -54,6 +54,20 @@ _ASSESSMENTS_LIST = [
         created_at=_NOW,
     )
 ]
+_PAGINATED_RESPONSE = {
+    "page": 1,
+    "items": [
+        {
+            "id_avaliacao": str(FAKE_ID),
+            "texto": "Avaliação teste",
+            "tipo_avaliacao": TipoAvaliacao.POSITIVA,
+            "usuario_id": str(USER_ID),
+            "empresa_id": str(ENTERPRISE_ID),
+            "created_at": _NOW.isoformat(),
+        }
+    ],
+    "has_more": False,
+}
 
 
 @pytest.fixture
@@ -160,3 +174,60 @@ def test_given_enterprise_exists_when_get_by_enterprise_then_returns_200(db_mock
     assert data[0]["empresa_id"] == str(ENTERPRISE_ID)
     assert data[0]["texto"] == "Avaliação teste"
     assert "created_at" in data[0]
+
+
+def test_given_enterprise_with_assessments_when_get_page_1_then_returns_200(db_mock):
+    with patch(
+        "app.routers.assessments.assessment_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE,
+    ):
+        response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?page=1")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["page"] == 1
+    assert len(data["items"]) == 1
+    assert data["has_more"] is False
+    assert data["items"][0]["empresa_id"] == str(ENTERPRISE_ID)
+
+
+def test_given_enterprise_with_more_assessments_when_get_page_1_then_has_more_true(db_mock):
+    paginated_with_more = {**_PAGINATED_RESPONSE, "has_more": True}
+    with patch(
+        "app.routers.assessments.assessment_service.list_by_enterprise_paginated",
+        return_value=paginated_with_more,
+    ):
+        response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?page=1")
+
+    assert response.status_code == 200
+    assert response.json()["has_more"] is True
+
+
+def test_given_page_beyond_results_when_get_paginated_then_returns_404(db_mock):
+    from app.core.exceptions import AssessmentPageEmptyError
+
+    with patch(
+        "app.routers.assessments.assessment_service.list_by_enterprise_paginated",
+        side_effect=AssessmentPageEmptyError(99),
+    ):
+        response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?page=99")
+
+    assert response.status_code == 404
+    assert "99" in response.json()["detail"]
+
+
+def test_given_invalid_page_0_when_get_paginated_then_returns_422(db_mock):
+    response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?page=0")
+    assert response.status_code == 422
+
+
+def test_given_enterprise_not_found_when_get_paginated_then_returns_404(db_mock):
+    from app.core.exceptions import EnterpriseNotFoundError
+
+    with patch(
+        "app.routers.assessments.assessment_service.list_by_enterprise_paginated",
+        side_effect=EnterpriseNotFoundError(ENTERPRISE_ID),
+    ):
+        response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?page=1")
+
+    assert response.status_code == 404
