@@ -195,6 +195,7 @@ class ReportService:
                     "response_mime_type": "application/json",
                     "response_json_schema": _PARSED_REPORT_SCHEMA,
                     "temperature": 0,
+                    "http_options": {"timeout": 30000},
                 },
             )
             return _ParsedReport.model_validate_json(response.text)
