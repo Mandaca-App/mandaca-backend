@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,6 +10,7 @@ from app.core.session import Base
 
 class AIReport(Base):
     __tablename__ = "relatorios_ia"
+    __table_args__ = (UniqueConstraint("empresa_id", name="uq_relatorios_ia_empresa"),)
 
     id_relatorio: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -26,12 +27,9 @@ class AIReport(Base):
         nullable=False,
         index=True,
     )
-    pontos_positivos_resumo: Mapped[str] = mapped_column(Text, nullable=False)
-    pontos_positivos_detalhado: Mapped[str] = mapped_column(Text, nullable=False)
-    melhorias_resumo: Mapped[str] = mapped_column(Text, nullable=False)
-    melhorias_detalhado: Mapped[str] = mapped_column(Text, nullable=False)
-    recomendacoes_resumo: Mapped[str] = mapped_column(Text, nullable=False)
-    recomendacoes_detalhado: Mapped[str] = mapped_column(Text, nullable=False)
+    pontos_positivos: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    melhorias: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    recomendacoes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

@@ -29,12 +29,9 @@ def _make_report(**kwargs) -> AIReport:
         id_relatorio=kwargs.get("id_relatorio", FAKE_REPORT_ID),
         empresa_id=kwargs.get("empresa_id", FAKE_EMPRESA_ID),
         contexto_id=kwargs.get("contexto_id", FAKE_CONTEXTO_ID),
-        pontos_positivos_resumo="Boa comida.",
-        pontos_positivos_detalhado="Alta qualidade.",
-        melhorias_resumo="Atendimento lento.",
-        melhorias_detalhado="Mais funcionarios.",
-        recomendacoes_resumo="Investir em marketing.",
-        recomendacoes_detalhado="Campanhas nas redes sociais.",
+        pontos_positivos=kwargs.get("pontos_positivos", []),
+        melhorias=kwargs.get("melhorias", []),
+        recomendacoes=kwargs.get("recomendacoes", []),
         criado_em=kwargs.get("criado_em", datetime.now(timezone.utc)),
     )
 

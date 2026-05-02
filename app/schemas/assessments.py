@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Optional
 from uuid import UUID
 
@@ -23,6 +24,7 @@ class AssessmentResponse(BaseModel):
 
     id_avaliacao: UUID
     texto: str
-    tipo_avaliacao: TipoAvaliacao
+    tipo_avaliacao: TipoAvaliacao  # serializado como inteiro (0-4)
     usuario_id: UUID
     empresa_id: UUID
+    created_at: datetime

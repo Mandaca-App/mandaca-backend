@@ -1,8 +1,9 @@
 import json
+from typing import Any
 from uuid import UUID
 
 from google import genai
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -19,23 +20,113 @@ from app.services.context_validation_service import (
     ContextValidationService,
 )
 
-_SYSTEM_PROMPT = (
-    "Você é um analista de negócios especializado em gastronomia e turismo no Nordeste do Brasil. "
-    "Analise o contexto do negócio fornecido e gere um relatório estruturado em JSON com três "
-    "seções: pontos_positivos, melhorias e recomendacoes. "
-    "Cada seção deve ter duas versões: resumo (até 100 palavras) e detalhado (até 400 palavras). "
-    "Escreva em português brasileiro. Seja objetivo, construtivo e específico para o negócio. "
-    "Retorne somente JSON compatível com o schema fornecido."
-)
+# ---------------------------------------------------------------------------
+# Structured output models (private - Gemini response only)
+# ---------------------------------------------------------------------------
 
 
-class _AIReportLLMOutput(BaseModel):
-    pontos_positivos_resumo: str
-    pontos_positivos_detalhado: str
-    melhorias_resumo: str
-    melhorias_detalhado: str
-    recomendacoes_resumo: str
-    recomendacoes_detalhado: str
+class _ParsedSuggestion(BaseModel):
+    mensagem: str
+    target: str
+    menu_item_id: str | None = None
+    campo_para_alterar: str
+    novo_valor: str
+
+    @field_validator("target", mode="before")
+    @classmethod
+    def _coerce_invalid_target(cls, v: str) -> str:
+        if v not in ("enterprise", "menu_item"):
+            return "enterprise"
+        return v
+
+    @field_validator("menu_item_id", mode="before")
+    @classmethod
+    def _coerce_invalid_uuid(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        try:
+            UUID(str(v))
+            return str(v)
+        except (ValueError, AttributeError):
+            return None
+
+
+class _ParsedReportItem(BaseModel):
+    titulo: str
+    resumo: str
+    descricao: str
+    pode_auto_aplicar: bool
+    sugestao: _ParsedSuggestion | None = None
+
+    @model_validator(mode="after")
+    def _validate_sugestao(self) -> "_ParsedReportItem":
+        if self.pode_auto_aplicar and self.sugestao is None:
+            raise ValueError("sugestao obrigatoria quando pode_auto_aplicar=True")
+        return self
+
+
+class _ParsedReport(BaseModel):
+    pontos_positivos: list[_ParsedReportItem]
+    melhorias: list[_ParsedReportItem]
+    recomendacoes: list[_ParsedReportItem]
+
+
+_PARSED_REPORT_SCHEMA: dict[str, Any] = _ParsedReport.model_json_schema()
+
+
+# ---------------------------------------------------------------------------
+# System prompt
+# ---------------------------------------------------------------------------
+
+_SYSTEM_PROMPT = """
+Voce e um consultor especializado em avaliar negocios gastronomicos do
+interior de Pernambuco. Analise o contexto do negocio fornecido (perfil,
+avaliacoes de clientes e cardapio) e gere um relatorio estruturado em tres
+categorias: pontos_positivos, melhorias e recomendacoes.
+
+Para cada item, defina pode_auto_aplicar e sugestao conforme as regras abaixo.
+
+## Campos editaveis no aplicativo
+
+Empresa (target=enterprise): historia, telefone, endereco, hora_abrir (HH:MM), hora_fechar (HH:MM)
+Cardapio por item (target=menu_item): descricao, preco (valor decimal positivo)
+
+O contexto lista os itens de cardapio com seus respectivos "id" (UUID).
+Quando a sugestao envolver um item de cardapio especifico, use exatamente o "id"
+desse item no campo menu_item_id. Nunca invente ou modifique um UUID.
+
+## Regras de pode_auto_aplicar
+
+- pode_auto_aplicar=true: o aspecto corresponde a um campo editavel listado acima
+  e e possivel sugerir um valor concreto para substituicao.
+  Preencha sugestao com: mensagem, target, campo_para_alterar e novo_valor.
+  Para target=menu_item: preencha menu_item_id com o UUID exato do item do contexto.
+  Para target=enterprise: deixe menu_item_id como null.
+
+- pode_auto_aplicar=false: o aspecto nao pode ser resolvido editando um campo do app
+  (ex: higiene, atendimento, ambiente, logistica). Sugestao DEVE ser null.
+
+## Exemplos
+
+Aspecto "historia da empresa nao contada": pode_auto_aplicar=true,
+  target=enterprise, campo_para_alterar=historia, novo_valor=<texto sugerido>,
+  menu_item_id=null
+
+Aspecto "descricao do prato X esta vazia": pode_auto_aplicar=true,
+  target=menu_item, campo_para_alterar=descricao, novo_valor=<descricao sugerida>,
+  menu_item_id=<id exato do item no contexto>
+
+Aspecto "higiene dos talheres precisa melhorar": pode_auto_aplicar=false, sugestao=null
+
+Aspecto "atendimento simpatico": pode_auto_aplicar=false, sugestao=null
+
+Retorne JSON valido que siga exatamente o schema fornecido.
+""".strip()
+
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
 
 
 class ReportService:
@@ -56,18 +147,23 @@ class ReportService:
         if not validation.context_changed and validation.reusable_report is not None:
             return validation.reusable_report
 
-        contexto, dados_contexto = self._resolve_context(validation, empresa_id, db)
-        parsed = self._invoke_llm(dados_contexto)
+        # LLM chamado antes de persistir o contexto: falha na API nao deixa contexto orfao
+        parsed = self._invoke_llm(validation.current_context_data)
+        contexto = self._resolve_context(validation, empresa_id, db)
+
+        existing = (
+            db.execute(select(AIReport).where(AIReport.empresa_id == empresa_id)).scalars().first()
+        )
+        if existing is not None:
+            db.delete(existing)
+            db.flush()
 
         report = AIReport(
             empresa_id=empresa_id,
             contexto_id=contexto.id_contexto,
-            pontos_positivos_resumo=parsed.pontos_positivos_resumo,
-            pontos_positivos_detalhado=parsed.pontos_positivos_detalhado,
-            melhorias_resumo=parsed.melhorias_resumo,
-            melhorias_detalhado=parsed.melhorias_detalhado,
-            recomendacoes_resumo=parsed.recomendacoes_resumo,
-            recomendacoes_detalhado=parsed.recomendacoes_detalhado,
+            pontos_positivos=[i.model_dump() for i in parsed.pontos_positivos],
+            melhorias=[i.model_dump() for i in parsed.melhorias],
+            recomendacoes=[i.model_dump() for i in parsed.recomendacoes],
         )
         db.add(report)
         db.commit()
@@ -76,35 +172,33 @@ class ReportService:
 
     def _resolve_context(
         self, validation: ContextValidationResult, empresa_id: UUID, db: Session
-    ) -> tuple[BusinessContext, dict]:
+    ) -> BusinessContext:
         if not validation.context_changed:
             if validation.saved_context is None:
                 raise AIReportGenerationError("contexto salvo ausente para contexto inalterado")
-            return validation.saved_context, validation.saved_context.dados_contexto
+            return validation.saved_context
 
-        contexto = self._context_service.create_from_snapshot(
+        return self._context_service.create_from_snapshot(
             empresa_id,
             validation.current_context_data,
             validation.current_context_hash,
             db,
         )
-        return contexto, validation.current_context_data
 
-    def _invoke_llm(self, dados_contexto: dict) -> _AIReportLLMOutput:
-        context_str = json.dumps(dados_contexto, ensure_ascii=False)
-
+    def _invoke_llm(self, context_data: dict[str, Any]) -> _ParsedReport:
         try:
             response = self._gemini_client.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=f"Contexto do negócio:\n{context_str}",
+                contents=json.dumps(context_data, ensure_ascii=False),
                 config={
                     "system_instruction": _SYSTEM_PROMPT,
                     "response_mime_type": "application/json",
-                    "response_json_schema": _AIReportLLMOutput.model_json_schema(),
-                    "temperature": 0.2,
+                    "response_json_schema": _PARSED_REPORT_SCHEMA,
+                    "temperature": 0,
+                    "http_options": {"timeout": 30000},
                 },
             )
-            return _AIReportLLMOutput.model_validate_json(response.text)
+            return _ParsedReport.model_validate_json(response.text)
         except Exception as exc:
             raise AIReportGenerationError(str(exc)) from exc
 

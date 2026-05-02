@@ -1,17 +1,30 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from google import genai
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.exceptions import (
+    AssessmentClassificationError,
+    AssessmentNotFoundError,
+    EnterpriseNotFoundError,
+    UserNotFoundError,
+)
 from app.models.assessment import Assessment, TipoAvaliacao
 from app.models.enterprise import Enterprise
 from app.models.user import User
 from app.schemas.assessments import AssessmentCreate, AssessmentUpdate
+
+_TIPO_MAP: dict[str, TipoAvaliacao] = {
+    "positiva": TipoAvaliacao.POSITIVA,
+    "negativa": TipoAvaliacao.NEGATIVA,
+    "neutra": TipoAvaliacao.NEUTRA,
+    "sugestao": TipoAvaliacao.SUGESTAO,
+    "duvida": TipoAvaliacao.DUVIDA,
+}
 
 
 class AssessmentClassification(BaseModel):
@@ -42,46 +55,33 @@ class AssessmentService:
             )
 
             data = AssessmentClassification.model_validate_json(response.text)
-            return TipoAvaliacao(data.tipo_avaliacao)
+            return _TIPO_MAP[data.tipo_avaliacao]
 
         except Exception as exc:
-            raise RuntimeError("Falha ao classificar a avaliação.") from exc
+            raise AssessmentClassificationError(
+                "Não foi possível classificar a avaliação no momento. Tente novamente."
+            ) from exc
 
     def get_by_id(self, assessment_id: UUID, db: Session) -> Assessment:
         assessment = db.get(Assessment, assessment_id)
         if not assessment:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Avaliação não encontrada.",
-            )
+            raise AssessmentNotFoundError(assessment_id)
         return assessment
 
     def list_all(self, db: Session) -> list[Assessment]:
-        stmt = select(Assessment)
+        stmt = select(Assessment).order_by(Assessment.created_at.desc())
         return list(db.scalars(stmt).all())
 
     def create(self, assessment_in: AssessmentCreate, db: Session) -> Assessment:
         usuario = db.get(User, assessment_in.usuario_id)
         if not usuario:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Usuário não encontrado.",
-            )
+            raise UserNotFoundError(assessment_in.usuario_id)
 
         empresa = db.get(Enterprise, assessment_in.empresa_id)
         if not empresa:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Empresa não encontrada.",
-            )
+            raise EnterpriseNotFoundError(assessment_in.empresa_id)
 
-        try:
-            tipo = self.classify_assessment_text(assessment_in.texto)
-        except RuntimeError:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Não foi possível classificar a avaliação no momento. Tente novamente.",
-            )
+        tipo = self.classify_assessment_text(assessment_in.texto)
 
         assessment = Assessment(
             texto=assessment_in.texto,
@@ -106,29 +106,17 @@ class AssessmentService:
         if assessment_in.usuario_id is not None:
             usuario = db.get(User, assessment_in.usuario_id)
             if not usuario:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Usuário não encontrado.",
-                )
+                raise UserNotFoundError(assessment_in.usuario_id)
             assessment.usuario_id = assessment_in.usuario_id
 
         if assessment_in.empresa_id is not None:
             empresa = db.get(Enterprise, assessment_in.empresa_id)
             if not empresa:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Empresa não encontrada.",
-                )
+                raise EnterpriseNotFoundError(assessment_in.empresa_id)
             assessment.empresa_id = assessment_in.empresa_id
 
         if assessment_in.texto is not None:
-            try:
-                novo_tipo = self.classify_assessment_text(assessment_in.texto)
-            except RuntimeError:
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Não foi possível classificar a avaliação no momento. Tente novamente.",
-                )
+            novo_tipo = self.classify_assessment_text(assessment_in.texto)
             assessment.texto = assessment_in.texto
             assessment.tipo_avaliacao = novo_tipo
 
@@ -136,19 +124,19 @@ class AssessmentService:
         db.refresh(assessment)
         return assessment
 
-    def delete(self, assessment_id: UUID, db: Session):
+    def delete(self, assessment_id: UUID, db: Session) -> None:
         assessment = self.get_by_id(assessment_id, db)
         db.delete(assessment)
         db.commit()
-        return None
 
     def list_by_enterprise(self, empresa_id: UUID, db: Session) -> list[Assessment]:
         empresa = db.get(Enterprise, empresa_id)
         if not empresa:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Empresa não encontrada.",
-            )
+            raise EnterpriseNotFoundError(empresa_id)
 
-        stmt = select(Assessment).where(Assessment.empresa_id == empresa_id)
+        stmt = (
+            select(Assessment)
+            .where(Assessment.empresa_id == empresa_id)
+            .order_by(Assessment.created_at.desc())
+        )
         return list(db.scalars(stmt).all())
