@@ -9,6 +9,7 @@ from app.core.exceptions import (
     AIReportNotFoundError,
     AssessmentClassificationError,
     AssessmentNotFoundError,
+    AssessmentPageEmptyError,
     AudioRateLimitError,
     AudioServiceConnectionError,
     AudioServiceTimeoutError,
@@ -135,6 +136,7 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(ChatRateLimitError, _handle_429)
     fastapi_app.add_exception_handler(ChatServiceTimeoutError, _handle_504)
     fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404)
+    fastapi_app.add_exception_handler(AssessmentPageEmptyError, _handle_404)
     fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
 
 
