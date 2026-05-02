@@ -151,6 +151,13 @@ class ReportService:
         parsed = self._invoke_llm(validation.current_context_data)
         contexto = self._resolve_context(validation, empresa_id, db)
 
+        existing = (
+            db.execute(select(AIReport).where(AIReport.empresa_id == empresa_id)).scalars().first()
+        )
+        if existing is not None:
+            db.delete(existing)
+            db.flush()
+
         report = AIReport(
             empresa_id=empresa_id,
             contexto_id=contexto.id_contexto,

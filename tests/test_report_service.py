@@ -67,6 +67,7 @@ def _mock_db() -> MagicMock:
     db = MagicMock()
     execute_result = MagicMock()
     execute_result.scalars.return_value.all.return_value = []
+    execute_result.scalars.return_value.first.return_value = None
     db.execute.return_value = execute_result
     db.get.return_value = None
     return db
@@ -439,6 +440,146 @@ def test_given_auto_apply_true_without_sugestao_when_item_created_then_raises():
             pode_auto_aplicar=True,
             sugestao=None,
         )
+
+
+# ---------------------------------------------------------------------------
+# unicidade de relatorio por empresa (SCRUM-214)
+# ---------------------------------------------------------------------------
+
+
+def test_given_changed_context_with_existing_report_when_generate_then_deletes_old():
+    # GIVEN
+    from unittest.mock import call
+
+    from app.services.report_service import ReportService
+
+    old_ctx = _make_context()
+    new_ctx = _make_context(id_contexto=uuid.uuid4())
+    existing_report = _make_report()
+
+    db = _mock_db()
+    db.refresh = MagicMock()
+    db.execute.return_value.scalars.return_value.first.return_value = existing_report
+
+    ctx_svc = _mock_context_service([old_ctx])
+    ctx_svc.create_from_snapshot.return_value = new_ctx
+    validation_svc = _mock_validation_service(
+        old_ctx,
+        context_changed=True,
+        current_context_data=FAKE_DADOS_CONTEXTO,
+        current_context_hash="b" * 64,
+    )
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    db.delete.assert_called_once_with(existing_report)
+    db.flush.assert_called_once()
+    assert db.method_calls.index(call.flush()) < db.method_calls.index(
+        call.add(db.add.call_args[0][0])
+    )
+
+
+def test_given_changed_context_no_prior_report_when_generate_then_no_delete():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    old_ctx = _make_context()
+    new_ctx = _make_context(id_contexto=uuid.uuid4())
+
+    db = _mock_db()
+    db.refresh = MagicMock()
+    ctx_svc = _mock_context_service([old_ctx])
+    ctx_svc.create_from_snapshot.return_value = new_ctx
+    validation_svc = _mock_validation_service(
+        old_ctx,
+        context_changed=True,
+        current_context_data=FAKE_DADOS_CONTEXTO,
+        current_context_hash="b" * 64,
+    )
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    db.delete.assert_not_called()
+    db.add.assert_called_once()
+
+
+def test_given_changed_context_when_error_after_delete_then_no_commit():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    old_ctx = _make_context()
+    new_ctx = _make_context(id_contexto=uuid.uuid4())
+    existing_report = _make_report()
+
+    db = _mock_db()
+    db.execute.return_value.scalars.return_value.first.return_value = existing_report
+    db.add.side_effect = Exception("falha simulada apos delete")
+
+    ctx_svc = _mock_context_service([old_ctx])
+    ctx_svc.create_from_snapshot.return_value = new_ctx
+    validation_svc = _mock_validation_service(
+        old_ctx,
+        context_changed=True,
+        current_context_data=FAKE_DADOS_CONTEXTO,
+        current_context_hash="b" * 64,
+    )
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    with pytest.raises(Exception, match="falha simulada apos delete"):
+        service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    db.delete.assert_called_once_with(existing_report)
+    db.commit.assert_not_called()
+
+
+def test_given_unchanged_context_with_report_when_generate_then_no_delete_no_new():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    existing_report = _make_report()
+    db = _mock_db()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, reusable_report=existing_report)
+
+    service = ReportService(
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    assert result is existing_report
+    db.delete.assert_not_called()
+    db.add.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.assessment import Assessment
+from app.models.assessment import Assessment, TipoAvaliacao
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
 
@@ -31,7 +31,7 @@ class ChatContextService:
             parts.append("")
             parts.append("Avaliacoes recentes dos clientes:")
             for a in assessments:
-                parts.append(f'- [{a.tipo_avaliacao.value}] "{a.texto}"')
+                parts.append(f'- [{TipoAvaliacao(a.tipo_avaliacao).name.lower()}] "{a.texto}"')
 
         menu_items = self._fetch_active_menu(empresa_id, db)
         if menu_items:
