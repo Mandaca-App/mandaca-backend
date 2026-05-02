@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.exceptions import (
     AssessmentClassificationError,
     AssessmentNotFoundError,
+    AssessmentPageEmptyError,
     EnterpriseNotFoundError,
     UserNotFoundError,
 )
@@ -25,6 +26,7 @@ _TIPO_MAP: dict[str, TipoAvaliacao] = {
     "sugestao": TipoAvaliacao.SUGESTAO,
     "duvida": TipoAvaliacao.DUVIDA,
 }
+_PAGE_SIZE = 10
 
 
 class AssessmentClassification(BaseModel):
@@ -140,3 +142,35 @@ class AssessmentService:
             .order_by(Assessment.created_at.desc())
         )
         return list(db.scalars(stmt).all())
+
+    def list_by_enterprise_paginated(
+        self,
+        empresa_id: UUID,
+        page: int,
+        db: Session,
+    ) -> dict:
+        empresa = db.get(Enterprise, empresa_id)
+        if not empresa:
+            raise EnterpriseNotFoundError(empresa_id)
+
+        offset = (page - 1) * _PAGE_SIZE
+
+        stmt = (
+            select(Assessment)
+            .where(Assessment.empresa_id == empresa_id)
+            .order_by(Assessment.created_at.desc())
+            .offset(offset)
+            .limit(_PAGE_SIZE + 1)  # busca 1 a mais para saber se existe próxima página
+        )
+        rows = list(db.scalars(stmt).all())
+
+        if not rows:
+            raise AssessmentPageEmptyError(page)
+
+        has_more = len(rows) > _PAGE_SIZE
+
+        return {
+            "page": page,
+            "items": rows[:_PAGE_SIZE],
+            "has_more": has_more,
+        }

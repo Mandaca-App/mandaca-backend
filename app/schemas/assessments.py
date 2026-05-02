@@ -28,3 +28,11 @@ class AssessmentResponse(BaseModel):
     usuario_id: UUID
     empresa_id: UUID
     created_at: datetime
+
+
+class AssessmentPaginatedResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    page: int
+    items: list[AssessmentResponse]
+    has_more: bool
