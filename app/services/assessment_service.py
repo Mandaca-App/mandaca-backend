@@ -17,7 +17,7 @@ from app.core.exceptions import (
 from app.models.assessment import Assessment, TipoAvaliacao
 from app.models.enterprise import Enterprise
 from app.models.user import User
-from app.schemas.assessments import AssessmentCreate, AssessmentUpdate
+from app.schemas.assessments import AssessmentCreate, AssessmentPaginatedResponse, AssessmentUpdate
 
 _TIPO_MAP: dict[str, TipoAvaliacao] = {
     "positiva": TipoAvaliacao.POSITIVA,
@@ -148,7 +148,7 @@ class AssessmentService:
         empresa_id: UUID,
         page: int,
         db: Session,
-    ) -> dict:
+    ) -> AssessmentPaginatedResponse:
         empresa = db.get(Enterprise, empresa_id)
         if not empresa:
             raise EnterpriseNotFoundError(empresa_id)
@@ -164,7 +164,7 @@ class AssessmentService:
         )
         rows = list(db.scalars(stmt).all())
 
-        if not rows:
+        if not rows and page > 1:
             raise AssessmentPageEmptyError(page)
 
         has_more = len(rows) > _PAGE_SIZE

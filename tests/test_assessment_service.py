@@ -179,3 +179,36 @@ def test_given_11_assessments_when_paginated_page_1_then_has_more_true():
 
     assert result["has_more"] is True
     assert len(result["items"]) == 10
+
+
+def test_given_empty_page_1_when_paginated_then_returns_empty_200():
+    """Empresa existe mas não tem avaliações — page=1 deve retornar lista vazia, não erro."""
+    service = AssessmentService()
+    db = MagicMock()
+    db.get.return_value = MagicMock()  # empresa existe
+
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = []  # nenhuma avaliação
+    db.scalars.return_value = scalars_mock
+
+    result = service.list_by_enterprise_paginated(uuid.uuid4(), page=1, db=db)
+
+    assert result["page"] == 1
+    assert result["items"] == []
+    assert result["has_more"] is False
+
+
+def test_given_empty_page_beyond_1_when_paginated_then_raises():
+    """Página 2+ sem resultados deve lançar AssessmentPageEmptyError."""
+    service = AssessmentService()
+    db = MagicMock()
+    db.get.return_value = MagicMock()
+
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = []
+    db.scalars.return_value = scalars_mock
+
+    with pytest.raises(AssessmentPageEmptyError) as exc_info:
+        service.list_by_enterprise_paginated(uuid.uuid4(), page=5, db=db)
+
+    assert exc_info.value.page == 5
