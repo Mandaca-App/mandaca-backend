@@ -6,13 +6,14 @@ Estratégia: SQLAlchemy Session, BusinessContextService e genai.Client mockados.
 Não há banco real nem chamadas de rede nestes testes.
 """
 
+import json
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
 
-from app.core.exceptions import AIReportNotFoundError
+from app.core.exceptions import AIReportGenerationError, AIReportNotFoundError
 from app.models.business_context import BusinessContext
 from app.models.report import AIReport
 from app.services.context_validation_service import ContextValidationResult
@@ -77,6 +78,43 @@ def _mock_context_service(contexts: list) -> MagicMock:
     return svc
 
 
+_FAKE_PARSED_ITEM_NO_APPLY = {
+    "titulo": "Baião elogiado",
+    "resumo": "Clientes adoram o baião",
+    "descricao": "O baião de dois foi o prato mais pedido no mês.",
+    "pode_auto_aplicar": False,
+    "sugestao": None,
+}
+
+_FAKE_PARSED_ITEM_WITH_APPLY = {
+    "titulo": "Descrição do baião incompleta",
+    "resumo": "Descrição do cardápio está vazia",
+    "descricao": "O item de cardápio não tem descrição detalhada.",
+    "pode_auto_aplicar": True,
+    "sugestao": {
+        "mensagem": "Vou adicionar uma descrição para o Baião de Dois",
+        "target": "menu_item",
+        "menu_item_id": str(uuid.uuid4()),
+        "campo_para_alterar": "descricao",
+        "novo_valor": "Baião de dois com carne de sol, feijão verde e queijo coalho.",
+    },
+}
+
+_FAKE_PARSED_REPORT = {
+    "pontos_positivos": [_FAKE_PARSED_ITEM_NO_APPLY],
+    "melhorias": [_FAKE_PARSED_ITEM_WITH_APPLY],
+    "recomendacoes": [_FAKE_PARSED_ITEM_NO_APPLY],
+}
+
+
+def _mock_gemini_client(parsed_report: dict | None = None) -> MagicMock:
+    client = MagicMock()
+    response = MagicMock()
+    response.text = json.dumps(parsed_report or _FAKE_PARSED_REPORT)
+    client.models.generate_content.return_value = response
+    return client
+
+
 def _mock_validation_service(
     context: BusinessContext | None,
     *,
@@ -85,20 +123,22 @@ def _mock_validation_service(
     current_context_hash: str | None = None,
     reusable_report: AIReport | None = None,
 ) -> MagicMock:
+    data = (
+        current_context_data
+        if current_context_data is not None
+        else (context.dados_contexto if context is not None else FAKE_DADOS_CONTEXTO)
+    )
+    hash_ = (
+        current_context_hash
+        if current_context_hash is not None
+        else (context.hash_contexto if context is not None else "b" * 64)
+    )
     svc = MagicMock()
     svc.validate_for_report.return_value = ContextValidationResult(
         context_changed=context_changed,
         saved_context=context,
-        current_context_data=(
-            current_context_data
-            if current_context_data is not None
-            else context.dados_contexto if context is not None else FAKE_DADOS_CONTEXTO
-        ),
-        current_context_hash=(
-            current_context_hash
-            if current_context_hash is not None
-            else context.hash_contexto if context is not None else "b" * 64
-        ),
+        current_context_data=data,
+        current_context_hash=hash_,
         reusable_report=reusable_report,
     )
     return svc
@@ -118,8 +158,10 @@ def test_given_valid_empresa_when_generate_then_returns_report():
     db.refresh = MagicMock()
     ctx_svc = _mock_context_service([ctx])
     validation_svc = _mock_validation_service(ctx)
+    gemini = _mock_gemini_client()
 
     service = ReportService(
+        gemini_client=gemini,
         context_service=ctx_svc,
         context_validation_service=validation_svc,
     )
@@ -133,7 +175,7 @@ def test_given_valid_empresa_when_generate_then_returns_report():
     assert result.contexto_id == FAKE_CONTEXTO_ID
 
 
-def test_given_valid_empresa_when_generate_then_saves_empty_lists():
+def test_given_valid_empresa_when_generate_then_saves_lists():
     # GIVEN
     from app.services.report_service import ReportService
 
@@ -142,8 +184,10 @@ def test_given_valid_empresa_when_generate_then_saves_empty_lists():
     db.refresh = MagicMock()
     ctx_svc = _mock_context_service([ctx])
     validation_svc = _mock_validation_service(ctx)
+    gemini = _mock_gemini_client()
 
     service = ReportService(
+        gemini_client=gemini,
         context_service=ctx_svc,
         context_validation_service=validation_svc,
     )
@@ -164,6 +208,7 @@ def test_given_empresa_no_context_when_generate_then_persists_first_context_befo
     from app.services.report_service import ReportService
 
     db = _mock_db()
+    db.refresh = MagicMock()
     new_ctx = _make_context(id_contexto=uuid.uuid4(), dados_contexto=FAKE_DADOS_CONTEXTO)
     ctx_svc = _mock_context_service([])
     ctx_svc.create_from_snapshot.return_value = new_ctx
@@ -172,8 +217,10 @@ def test_given_empresa_no_context_when_generate_then_persists_first_context_befo
         context_changed=True,
         current_context_data=FAKE_DADOS_CONTEXTO,
     )
+    gemini = _mock_gemini_client()
 
     service = ReportService(
+        gemini_client=gemini,
         context_service=ctx_svc,
         context_validation_service=validation_svc,
     )
@@ -242,6 +289,7 @@ def test_given_changed_context_when_generate_then_persists_new_context_before_re
     old_ctx = _make_context(dados_contexto={"nome": "Antigo"})
     new_ctx = _make_context(id_contexto=uuid.uuid4(), dados_contexto=FAKE_DADOS_CONTEXTO)
     db = _mock_db()
+    db.refresh = MagicMock()
     ctx_svc = _mock_context_service([old_ctx])
     ctx_svc.create_from_snapshot.return_value = new_ctx
     validation_svc = _mock_validation_service(
@@ -250,8 +298,10 @@ def test_given_changed_context_when_generate_then_persists_new_context_before_re
         current_context_data=FAKE_DADOS_CONTEXTO,
         current_context_hash="b" * 64,
     )
+    gemini = _mock_gemini_client()
 
     service = ReportService(
+        gemini_client=gemini,
         context_service=ctx_svc,
         context_validation_service=validation_svc,
     )
@@ -389,3 +439,316 @@ def test_given_auto_apply_true_without_sugestao_when_item_created_then_raises():
             pode_auto_aplicar=True,
             sugestao=None,
         )
+
+
+# ---------------------------------------------------------------------------
+# LLM integration: _invoke_llm via generate_report
+# ---------------------------------------------------------------------------
+
+
+def test_given_valid_context_when_generate_then_invokes_gemini():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    db = _mock_db()
+    db.refresh = MagicMock()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    ctx_svc.create_from_snapshot.return_value = ctx
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    gemini.models.generate_content.assert_called_once()
+
+
+def test_given_llm_returns_items_when_generate_then_lists_not_empty():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    db = _mock_db()
+    db.refresh = MagicMock()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    ctx_svc.create_from_snapshot.return_value = ctx
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    assert len(result.pontos_positivos) == 1
+    assert len(result.melhorias) == 1
+    assert len(result.recomendacoes) == 1
+
+
+def test_given_item_with_auto_apply_when_generate_then_sugestao_persisted():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    db = _mock_db()
+    db.refresh = MagicMock()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    ctx_svc.create_from_snapshot.return_value = ctx
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    melhoria = result.melhorias[0]
+    assert melhoria["pode_auto_aplicar"] is True
+    assert melhoria["sugestao"] is not None
+    assert melhoria["sugestao"]["campo_para_alterar"] == "descricao"
+
+
+def test_given_item_without_auto_apply_when_generate_then_sugestao_is_null():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    db = _mock_db()
+    db.refresh = MagicMock()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    ctx_svc.create_from_snapshot.return_value = ctx
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    ponto = result.pontos_positivos[0]
+    assert ponto["pode_auto_aplicar"] is False
+    assert ponto["sugestao"] is None
+
+
+def test_given_llm_raises_when_generate_then_raises_report_error():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    db = _mock_db()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    ctx_svc.create_from_snapshot.return_value = ctx
+    gemini = MagicMock()
+    gemini.models.generate_content.side_effect = Exception("API error")
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN / THEN
+    with pytest.raises(AIReportGenerationError):
+        service.generate_report(FAKE_EMPRESA_ID, db)
+
+
+def test_given_unchanged_context_when_generate_then_gemini_not_called():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    existing_report = _make_report(
+        pontos_positivos=[_FAKE_PARSED_ITEM_NO_APPLY],
+        melhorias=[_FAKE_PARSED_ITEM_WITH_APPLY],
+        recomendacoes=[_FAKE_PARSED_ITEM_NO_APPLY],
+    )
+    db = _mock_db()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, reusable_report=existing_report)
+    gemini = _mock_gemini_client()
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN
+    gemini.models.generate_content.assert_not_called()
+    assert result is existing_report
+
+
+def test_given_llm_fails_when_generate_then_context_not_persisted():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    ctx = _make_context()
+    db = _mock_db()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    gemini = MagicMock()
+    gemini.models.generate_content.side_effect = Exception("API timeout")
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    with pytest.raises(AIReportGenerationError):
+        service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN: contexto nao foi persistido porque o LLM falhou antes
+    ctx_svc.create_from_snapshot.assert_not_called()
+
+
+def test_given_inconsistent_llm_output_when_auto_apply_true_no_sugestao_then_raises():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    inconsistent_report = {
+        "pontos_positivos": [],
+        "melhorias": [
+            {
+                "titulo": "Ajuste necessario",
+                "resumo": "resumo",
+                "descricao": "descricao",
+                "pode_auto_aplicar": True,
+                "sugestao": None,
+            }
+        ],
+        "recomendacoes": [],
+    }
+    ctx = _make_context()
+    db = _mock_db()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    gemini = _mock_gemini_client(inconsistent_report)
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN / THEN: LLM retornou dado inconsistente, deve falhar como 502
+    with pytest.raises(AIReportGenerationError):
+        service.generate_report(FAKE_EMPRESA_ID, db)
+
+
+def test_given_invalid_target_in_sugestao_when_llm_returns_then_coerced_to_enterprise():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    report_with_invalid_target = {
+        "pontos_positivos": [],
+        "melhorias": [
+            {
+                "titulo": "Ajuste de historia",
+                "resumo": "resumo",
+                "descricao": "descricao",
+                "pode_auto_aplicar": True,
+                "sugestao": {
+                    "mensagem": "Atualize a historia",
+                    "target": "valor_invalido_qualquer",
+                    "menu_item_id": None,
+                    "campo_para_alterar": "historia",
+                    "novo_valor": "Historia nova",
+                },
+            }
+        ],
+        "recomendacoes": [],
+    }
+    ctx = _make_context()
+    db = _mock_db()
+    db.refresh = MagicMock()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    ctx_svc.create_from_snapshot.return_value = ctx
+    gemini = _mock_gemini_client(report_with_invalid_target)
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN: target invalido foi coercido para "enterprise"
+    melhoria = result.melhorias[0]
+    assert melhoria["sugestao"]["target"] == "enterprise"
+
+
+def test_given_invalid_uuid_in_menu_item_id_when_llm_returns_then_coerced_to_null():
+    # GIVEN
+    from app.services.report_service import ReportService
+
+    report_with_invalid_uuid = {
+        "pontos_positivos": [],
+        "melhorias": [
+            {
+                "titulo": "Descricao vazia",
+                "resumo": "resumo",
+                "descricao": "descricao",
+                "pode_auto_aplicar": True,
+                "sugestao": {
+                    "mensagem": "Adicione uma descricao",
+                    "target": "menu_item",
+                    "menu_item_id": "nao-e-um-uuid-valido",
+                    "campo_para_alterar": "descricao",
+                    "novo_valor": "Novo valor sugerido",
+                },
+            }
+        ],
+        "recomendacoes": [],
+    }
+    ctx = _make_context()
+    db = _mock_db()
+    db.refresh = MagicMock()
+    ctx_svc = _mock_context_service([ctx])
+    validation_svc = _mock_validation_service(ctx, context_changed=True)
+    ctx_svc.create_from_snapshot.return_value = ctx
+    gemini = _mock_gemini_client(report_with_invalid_uuid)
+
+    service = ReportService(
+        gemini_client=gemini,
+        context_service=ctx_svc,
+        context_validation_service=validation_svc,
+    )
+
+    # WHEN
+    result = service.generate_report(FAKE_EMPRESA_ID, db)
+
+    # THEN: UUID invalido foi descartado (None) em vez de explodir na serializacao
+    melhoria = result.melhorias[0]
+    assert melhoria["sugestao"]["menu_item_id"] is None
