@@ -4,11 +4,19 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.assessment import Assessment
+from app.models.assessment import Assessment, TipoAvaliacao
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
 
 _MAX_ASSESSMENTS = 5
+
+_TIPO_AVALIACAO_LABEL: dict[int, str] = {
+    TipoAvaliacao.POSITIVA: "positiva",
+    TipoAvaliacao.NEGATIVA: "negativa",
+    TipoAvaliacao.NEUTRA: "neutra",
+    TipoAvaliacao.SUGESTAO: "sugestao",
+    TipoAvaliacao.DUVIDA: "duvida",
+}
 
 
 class BusinessContextBuilderService:
@@ -45,13 +53,18 @@ class BusinessContextBuilderService:
         assessments = self._fetch_assessments(empresa_id, db)
         if assessments:
             snapshot["avaliacoes"] = [
-                {"tipo": a.tipo_avaliacao.value, "texto": a.texto} for a in assessments
+                {
+                    "tipo": _TIPO_AVALIACAO_LABEL.get(a.tipo_avaliacao, str(a.tipo_avaliacao)),
+                    "texto": a.texto,
+                }
+                for a in assessments
             ]
 
         menu_items = self._fetch_active_menu(empresa_id, db)
         if menu_items:
             snapshot["cardapio"] = [
                 {
+                    "id": str(item.id_cardapio),
                     "categoria": item.categoria.value,
                     "descricao": item.descricao or "Item sem descrição",
                     "preco": str(item.preco),

@@ -20,7 +20,7 @@ def get_report_service() -> ReportService:
     response_model=AIReportResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def generate_report(
+def generate_report(
     empresa_id: UUID,
     db: Session = Depends(get_db),
     service: ReportService = Depends(get_report_service),
