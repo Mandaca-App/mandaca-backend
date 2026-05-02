@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, ForeignKey
+from sqlalchemy import JSON, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,6 +10,7 @@ from app.core.session import Base
 
 class AIReport(Base):
     __tablename__ = "relatorios_ia"
+    __table_args__ = (UniqueConstraint("empresa_id", name="uq_relatorios_ia_empresa"),)
 
     id_relatorio: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
