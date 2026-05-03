@@ -183,6 +183,30 @@ def test_given_false_flag_items_when_applied_then_ignored() -> None:
     db.commit.assert_not_called()
 
 
+def test_given_malformed_item_json_when_applied_then_item_skipped() -> None:
+    # GIVEN — item com target inválido no banco (regressão de SCRUM-213)
+    malformed = {
+        "titulo": "Item corrompido",
+        "resumo": "x",
+        "descricao": "x",
+        "pode_auto_aplicar": True,
+        "sugestao": {"target": "INVALIDO", "campo_para_alterar": "historia", "novo_valor": "y"},
+    }
+    valid = _make_item_dict()
+    report = _make_mock_report(melhorias=[malformed, valid])
+    db = _mock_db(report=report)
+    auto_apply = MagicMock(spec=AutoApplyService)
+    service = ReportAutoApplyService(auto_apply_service=auto_apply)
+
+    # WHEN
+    response = service.apply_from_report(FAKE_REPORT_ID, db)
+
+    # THEN — item malformado ignorado; item válido aplicado normalmente
+    assert response.total == 1
+    assert response.aplicadas == 1
+    auto_apply.apply.assert_called_once()
+
+
 def test_given_no_candidates_when_applied_then_zero_counts() -> None:
     # GIVEN — relatório sem itens
     report = _make_mock_report()

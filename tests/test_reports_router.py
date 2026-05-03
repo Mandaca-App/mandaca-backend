@@ -250,6 +250,12 @@ def test_given_invalid_uuid_when_get_by_id_then_returns_422():
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _clear_auto_apply_override():
+    yield
+    app.dependency_overrides.pop(get_report_auto_apply_service, None)
+
+
 def _make_auto_apply_client(mock_service: MagicMock) -> TestClient:
     app.dependency_overrides[get_report_auto_apply_service] = lambda: mock_service
     return TestClient(app, raise_server_exceptions=False)
