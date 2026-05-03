@@ -4,7 +4,7 @@ from uuid import UUID
 from google import genai
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.core.exceptions import (
@@ -65,13 +65,22 @@ class AssessmentService:
             ) from exc
 
     def get_by_id(self, assessment_id: UUID, db: Session) -> Assessment:
-        assessment = db.get(Assessment, assessment_id)
+        stmt = (
+            select(Assessment)
+            .options(selectinload(Assessment.usuario))
+            .where(Assessment.id_avaliacao == assessment_id)
+        )
+        assessment = db.scalars(stmt).first()
         if not assessment:
             raise AssessmentNotFoundError(assessment_id)
         return assessment
 
     def list_all(self, db: Session) -> list[Assessment]:
-        stmt = select(Assessment).order_by(Assessment.created_at.desc())
+        stmt = (
+            select(Assessment)
+            .options(selectinload(Assessment.usuario))
+            .order_by(Assessment.created_at.desc())
+        )
         return list(db.scalars(stmt).all())
 
     def create(self, assessment_in: AssessmentCreate, db: Session) -> Assessment:
@@ -138,6 +147,7 @@ class AssessmentService:
 
         stmt = (
             select(Assessment)
+            .options(selectinload(Assessment.usuario))
             .where(Assessment.empresa_id == empresa_id)
             .order_by(Assessment.created_at.desc())
         )
@@ -156,7 +166,11 @@ class AssessmentService:
 
         offset = (page - 1) * _PAGE_SIZE
 
-        stmt = select(Assessment).where(Assessment.empresa_id == empresa_id)
+        stmt = (
+            select(Assessment)
+            .options(selectinload(Assessment.usuario))
+            .where(Assessment.empresa_id == empresa_id)
+        )
 
         if tipo_avaliacao is not None:
             stmt = stmt.where(Assessment.tipo_avaliacao == tipo_avaliacao)

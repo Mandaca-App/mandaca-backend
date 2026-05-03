@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
 
 from app.models.assessment import TipoAvaliacao
 
@@ -26,8 +26,24 @@ class AssessmentResponse(BaseModel):
     texto: str
     tipo_avaliacao: TipoAvaliacao  # serializado como inteiro (0-4)
     usuario_id: UUID
+    usuario_nome: Optional[str] = None
     empresa_id: UUID
     created_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _extract_usuario_nome(cls, data):
+        # Quando a entrada e um objeto ORM com relationship "usuario" carregada,
+        # promove o nome para usuario_nome. Itera sobre model_fields para nao
+        # quebrar se novos campos forem adicionados ao schema.
+        if isinstance(data, dict):
+            return data
+        usuario = getattr(data, "usuario", None)
+        if usuario is None:
+            return data
+        fields = {name: getattr(data, name, None) for name in cls.model_fields}
+        fields["usuario_nome"] = getattr(usuario, "nome", None)
+        return fields
 
 
 class AssessmentPaginatedResponse(BaseModel):
