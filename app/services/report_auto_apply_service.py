@@ -32,13 +32,14 @@ class ReportAutoApplyService:
             + (report.recomendacoes or [])
         )
         candidates: list[ReportItem] = []
+        ignorados = 0
         for item in raw_items:
             if not (item.get("pode_auto_aplicar") and item.get("sugestao")):
                 continue
             try:
                 candidates.append(ReportItem(**item))
             except ValidationError:
-                pass
+                ignorados += 1
 
         resultados = [self._apply_one(report.empresa_id, item.sugestao, db) for item in candidates]
         aplicadas = sum(1 for r in resultados if r.status == SuggestionStatus.APPLIED)
@@ -55,6 +56,7 @@ class ReportAutoApplyService:
             total=len(resultados),
             aplicadas=aplicadas,
             rejeitadas=len(resultados) - aplicadas,
+            ignorados=ignorados,
             resultados=resultados,
         )
 

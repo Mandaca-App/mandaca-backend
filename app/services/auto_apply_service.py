@@ -72,6 +72,7 @@ class AutoApplyService:
             return
 
         coluna = _ENTERPRISE_FIELD_MAP[payload.campo_para_alterar]
+        assert coluna is not None  # horario_funcionamento retorna antes de chegar aqui
         setattr(enterprise, coluna, payload.novo_valor)
 
     def _apply_to_menu_item(self, payload: AutoApplyRequest, db: Session) -> None:
