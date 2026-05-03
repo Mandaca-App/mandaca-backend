@@ -119,14 +119,14 @@ def test_given_telefone_when_applied_then_updates_enterprise() -> None:
     assert enterprise.telefone == "81999999999"
 
 
-def test_given_horario_when_applied_then_parses_and_sets_both_columns() -> None:
+def test_given_valid_hora_abrir_when_applied_then_sets_time_column() -> None:
     # GIVEN
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
         target=AutoApplyTarget.ENTERPRISE,
-        campo_para_alterar="horario_funcionamento",
-        novo_valor="08:00-18:30",
+        campo_para_alterar="hora_abrir",
+        novo_valor="08:00",
     )
 
     # WHEN
@@ -134,7 +134,23 @@ def test_given_horario_when_applied_then_parses_and_sets_both_columns() -> None:
 
     # THEN
     assert enterprise.hora_abrir == time(8, 0)
-    assert enterprise.hora_fechar == time(18, 30)
+
+
+def test_given_valid_hora_fechar_when_applied_then_sets_time_column() -> None:
+    # GIVEN
+    enterprise = _make_enterprise()
+    db = _mock_db_with(enterprise)
+    payload = AutoApplyRequest(
+        target=AutoApplyTarget.ENTERPRISE,
+        campo_para_alterar="hora_fechar",
+        novo_valor="22:30",
+    )
+
+    # WHEN
+    AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
+
+    # THEN
+    assert enterprise.hora_fechar == time(22, 30)
 
 
 # ---------------------------------------------------------------------------
@@ -299,13 +315,13 @@ def test_given_invalid_preco_value_when_applied_then_raises_422() -> None:
         AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
-def test_given_invalid_horario_format_when_applied_then_raises_422() -> None:
+def test_given_invalid_time_format_when_applied_then_raises_422() -> None:
     # GIVEN
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
         target=AutoApplyTarget.ENTERPRISE,
-        campo_para_alterar="horario_funcionamento",
+        campo_para_alterar="hora_abrir",
         novo_valor="das 8 ate 18",
     )
 
@@ -314,14 +330,14 @@ def test_given_invalid_horario_format_when_applied_then_raises_422() -> None:
         AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
-def test_given_invalid_horario_time_when_applied_then_raises_422() -> None:
+def test_given_invalid_time_value_when_applied_then_raises_422() -> None:
     # GIVEN
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
         target=AutoApplyTarget.ENTERPRISE,
-        campo_para_alterar="horario_funcionamento",
-        novo_valor="25:00-99:00",
+        campo_para_alterar="hora_fechar",
+        novo_valor="25:00",
     )
 
     # WHEN / THEN
