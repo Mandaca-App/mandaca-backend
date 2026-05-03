@@ -1,7 +1,6 @@
 import re
 from datetime import time
 from decimal import Decimal, InvalidOperation
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -101,7 +100,7 @@ class AutoApplyService:
             raise MenuNotFoundError(menu_item_id)
         return menu
 
-    def _coerce_menu_value(self, campo_logico: str, novo_valor: str) -> Any:
+    def _coerce_menu_value(self, campo_logico: str, novo_valor: str) -> str | Decimal:
         if campo_logico == "preco":
             try:
                 return Decimal(novo_valor)

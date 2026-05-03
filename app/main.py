@@ -127,10 +127,8 @@ async def _handle_504(request: Request, exc: MandacaError) -> JSONResponse:
 
 
 async def _handle_500(request: Request, exc: MandacaError) -> JSONResponse:
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Erro interno do servidor."},
-    )
+    # detalhes de falhas internas nunca são expostos ao cliente por segurança
+    return JSONResponse(status_code=500, content={"detail": "Erro interno do servidor."})
 
 
 def _register_handlers(fastapi_app: FastAPI) -> None:

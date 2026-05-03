@@ -34,7 +34,7 @@ class AutoApplyResponse(BaseModel):
 
 
 class AutoApplySuggestion(BaseModel):
-    mensagem: str  # gerado pelo SCRUM-213 via _ParsedSuggestion.mensagem
+    mensagem: str  # texto exibível gerado pelo LLM junto com a sugestão
     target: AutoApplyTarget
     menu_item_id: UUID | None = None
     campo_para_alterar: str

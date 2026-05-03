@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AIReportNotFoundError, AutoApplyPersistenceError, MandacaError
@@ -30,11 +31,14 @@ class ReportAutoApplyService:
             + (report.melhorias or [])
             + (report.recomendacoes or [])
         )
-        candidates = [
-            ReportItem(**item)
-            for item in raw_items
-            if item.get("pode_auto_aplicar") and item.get("sugestao")
-        ]
+        candidates: list[ReportItem] = []
+        for item in raw_items:
+            if not (item.get("pode_auto_aplicar") and item.get("sugestao")):
+                continue
+            try:
+                candidates.append(ReportItem(**item))
+            except ValidationError:
+                pass
 
         resultados = [self._apply_one(report.empresa_id, item.sugestao, db) for item in candidates]
         aplicadas = sum(1 for r in resultados if r.status == SuggestionStatus.APPLIED)
