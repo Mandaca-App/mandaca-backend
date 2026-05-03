@@ -1,4 +1,3 @@
-import re
 from datetime import time
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
@@ -23,13 +22,16 @@ from app.schemas.auto_apply import (
 )
 
 # Whitelist: campo lógico (enviado pela IA) -> coluna real no modelo.
-# horario_funcionamento é caso especial: gera duas colunas (hora_abrir + hora_fechar).
-_ENTERPRISE_FIELD_MAP: dict[str, str | None] = {
+# Os nomes coincidem com as colunas reais; o LLM emite exatamente esses nomes.
+_ENTERPRISE_FIELD_MAP: dict[str, str] = {
     "historia": "historia",
     "telefone": "telefone",
     "endereco": "endereco",
-    "horario_funcionamento": None,
+    "hora_abrir": "hora_abrir",
+    "hora_fechar": "hora_fechar",
 }
+
+_ENTERPRISE_TIME_FIELDS = {"hora_abrir", "hora_fechar"}
 
 # Inversão intencional: o modelo Menu usa nomes históricos de coluna.
 # "descricao" armazena o nome exibido do item; "historia" armazena a descrição longa.
@@ -38,8 +40,6 @@ _MENU_FIELD_MAP: dict[str, str] = {
     "descricao": "historia",
     "preco": "preco",
 }
-
-_HORARIO_PATTERN = re.compile(r"^(\d{2}:\d{2})-(\d{2}:\d{2})$")
 
 
 class AutoApplyService:
@@ -71,16 +71,9 @@ class AutoApplyService:
             raise FieldNotAllowedError(payload.campo_para_alterar)
 
         enterprise = self._get_enterprise(enterprise_id, db)
-
-        if payload.campo_para_alterar == "horario_funcionamento":
-            hora_abrir, hora_fechar = self._parse_horario(payload.novo_valor)
-            enterprise.hora_abrir = hora_abrir
-            enterprise.hora_fechar = hora_fechar
-            return
-
         coluna = _ENTERPRISE_FIELD_MAP[payload.campo_para_alterar]
-        assert coluna is not None  # horario_funcionamento retorna antes de chegar aqui
-        setattr(enterprise, coluna, payload.novo_valor)
+        valor = self._coerce_enterprise_value(payload.campo_para_alterar, payload.novo_valor)
+        setattr(enterprise, coluna, valor)
 
     def _apply_to_menu_item(self, payload: AutoApplyRequest, db: Session) -> None:
         if payload.campo_para_alterar not in _MENU_FIELD_MAP:
@@ -108,6 +101,16 @@ class AutoApplyService:
             raise MenuNotFoundError(menu_item_id)
         return menu
 
+    def _coerce_enterprise_value(self, campo_logico: str, novo_valor: str) -> str | time:
+        if campo_logico in _ENTERPRISE_TIME_FIELDS:
+            try:
+                return time.fromisoformat(novo_valor)
+            except ValueError as exc:
+                raise InvalidFieldValueError(
+                    campo_logico, "horário inválido, esperado HH:MM"
+                ) from exc
+        return novo_valor
+
     def _coerce_menu_value(self, campo_logico: str, novo_valor: str) -> str | Decimal:
         if campo_logico == "preco":
             try:
@@ -115,23 +118,6 @@ class AutoApplyService:
             except InvalidOperation as exc:
                 raise InvalidFieldValueError(campo_logico, "preço inválido") from exc
         return novo_valor
-
-    def _parse_horario(self, valor: str) -> tuple[time, time]:
-        match = _HORARIO_PATTERN.match(valor)
-        if not match:
-            raise InvalidFieldValueError(
-                "horario_funcionamento",
-                "formato esperado HH:MM-HH:MM",
-            )
-        try:
-            hora_abrir = time.fromisoformat(match.group(1))
-            hora_fechar = time.fromisoformat(match.group(2))
-        except ValueError as exc:
-            raise InvalidFieldValueError(
-                "horario_funcionamento",
-                "horário inválido",
-            ) from exc
-        return hora_abrir, hora_fechar
 
     def _persist(self, db: Session) -> None:
         try:
