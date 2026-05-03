@@ -20,7 +20,7 @@ async def send_message(
     db: Session = Depends(get_db),
     service: ChatService = Depends(get_chat_service),
 ) -> ChatMessageResponse:
-    reply = await service.send_message(body.mensagem, body.empresa_id, db)
+    reply = await service.send_message(body.mensagem, body.empresa_id, db, body.nome_usuario)
     return ChatMessageResponse(reply=reply)
 
 
