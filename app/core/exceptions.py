@@ -145,6 +145,12 @@ class AssessmentClassificationError(MandacaError):
         self.detail = detail
 
 
+class AssessmentPageEmptyError(MandacaError):
+    def __init__(self, page: int) -> None:
+        super().__init__(f"Não há mais avaliações na página {page}.")
+        self.page = page
+
+
 # ---------------------------------------------------------------------------
 # Exceções de Contexto de Negócio (business_context_service)
 # ---------------------------------------------------------------------------

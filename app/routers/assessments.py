@@ -1,10 +1,15 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
-from app.schemas.assessments import AssessmentCreate, AssessmentResponse, AssessmentUpdate
+from app.schemas.assessments import (
+    AssessmentCreate,
+    AssessmentPaginatedResponse,
+    AssessmentResponse,
+    AssessmentUpdate,
+)
 from app.services.assessment_service import AssessmentService
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
@@ -65,6 +70,19 @@ def delete_assessment(
     db: Session = Depends(get_db),
 ):
     return assessment_service.delete(assessment_id, db)
+
+
+@router.get(
+    "/by-enterprise/{empresa_id}/paginated",
+    response_model=AssessmentPaginatedResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_assessments_by_enterprise_paginated(
+    empresa_id: UUID,
+    page: int = Query(1, ge=1, description="Número da página (começa em 1)"),
+    db: Session = Depends(get_db),
+) -> AssessmentPaginatedResponse:
+    return assessment_service.list_by_enterprise_paginated(empresa_id, page, db)
 
 
 @router.get(
