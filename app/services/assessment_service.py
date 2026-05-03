@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from uuid import UUID
 
 from google import genai
@@ -147,6 +147,7 @@ class AssessmentService:
         self,
         empresa_id: UUID,
         page: int,
+        tipo_avaliacao: Optional[TipoAvaliacao],
         db: Session,
     ) -> AssessmentPaginatedResponse:
         empresa = db.get(Enterprise, empresa_id)
@@ -160,8 +161,12 @@ class AssessmentService:
             .where(Assessment.empresa_id == empresa_id)
             .order_by(Assessment.created_at.desc())
             .offset(offset)
-            .limit(_PAGE_SIZE + 1)  # busca 1 a mais para saber se existe próxima página
+            .limit(_PAGE_SIZE + 1)
         )
+
+        if tipo_avaliacao is not None:
+            stmt = stmt.where(Assessment.tipo_avaliacao == tipo_avaliacao)
+
         rows = list(db.scalars(stmt).all())
 
         if not rows and page > 1:
