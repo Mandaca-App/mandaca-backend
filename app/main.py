@@ -15,6 +15,7 @@ from app.core.exceptions import (
     AudioServiceTimeoutError,
     AudioTooLargeError,
     AudioTranscriptionError,
+    AutoApplyPersistenceError,
     BusinessContextNotFoundError,
     ChatRateLimitError,
     ChatServiceConnectionError,
@@ -22,9 +23,12 @@ from app.core.exceptions import (
     ChatServiceTimeoutError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
+    FieldNotAllowedError,
     GeocodingUnavailableError,
     InvalidContextDataError,
+    InvalidFieldValueError,
     MandacaError,
+    MenuNotFoundError,
     UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
@@ -32,6 +36,7 @@ from app.core.exceptions import (
 )
 from app.routers import (
     assessments,
+    auto_apply,
     business_context,
     chat,
     enterprises,
@@ -55,6 +60,7 @@ app.include_router(chat.router)
 app.include_router(menus.router)
 app.include_router(business_context.router)
 app.include_router(reports.router)
+app.include_router(auto_apply.router)
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +72,7 @@ _NOT_FOUND_TYPES = (
     UserNotFoundError,
     AIReportNotFoundError,
     AssessmentNotFoundError,
+    MenuNotFoundError,
 )
 _BAD_REQUEST_TYPES = (
     DuplicateEnterpriseNameError,
@@ -80,6 +87,7 @@ _BAD_GATEWAY_TYPES = (
     AIReportGenerationError,
 )
 _SERVICE_UNAVAILABLE_TYPES = (AssessmentClassificationError,)
+_INTERNAL_ERROR_TYPES = (AutoApplyPersistenceError,)
 
 
 async def _handle_400(request: Request, exc: MandacaError) -> JSONResponse:
@@ -118,6 +126,11 @@ async def _handle_504(request: Request, exc: MandacaError) -> JSONResponse:
     return JSONResponse(status_code=504, content={"detail": str(exc)})
 
 
+async def _handle_500(request: Request, exc: MandacaError) -> JSONResponse:
+    # detalhes de falhas internas nunca são expostos ao cliente por segurança
+    return JSONResponse(status_code=500, content={"detail": "Erro interno do servidor."})
+
+
 def _register_handlers(fastapi_app: FastAPI) -> None:
     for exc_class in _NOT_FOUND_TYPES:
         fastapi_app.add_exception_handler(exc_class, _handle_404)
@@ -138,6 +151,10 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404)
     fastapi_app.add_exception_handler(AssessmentPageEmptyError, _handle_404)
     fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
+    fastapi_app.add_exception_handler(FieldNotAllowedError, _handle_422)
+    fastapi_app.add_exception_handler(InvalidFieldValueError, _handle_422)
+    for exc_class in _INTERNAL_ERROR_TYPES:
+        fastapi_app.add_exception_handler(exc_class, _handle_500)
 
 
 _register_handlers(app)

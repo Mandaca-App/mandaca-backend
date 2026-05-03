@@ -1,10 +1,10 @@
-from typing import Literal
+from typing import Literal, Optional
 from uuid import UUID
 
 from google import genai
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.core.exceptions import (
@@ -65,13 +65,22 @@ class AssessmentService:
             ) from exc
 
     def get_by_id(self, assessment_id: UUID, db: Session) -> Assessment:
-        assessment = db.get(Assessment, assessment_id)
+        stmt = (
+            select(Assessment)
+            .options(selectinload(Assessment.usuario))
+            .where(Assessment.id_avaliacao == assessment_id)
+        )
+        assessment = db.scalars(stmt).first()
         if not assessment:
             raise AssessmentNotFoundError(assessment_id)
         return assessment
 
     def list_all(self, db: Session) -> list[Assessment]:
-        stmt = select(Assessment).order_by(Assessment.created_at.desc())
+        stmt = (
+            select(Assessment)
+            .options(selectinload(Assessment.usuario))
+            .order_by(Assessment.created_at.desc())
+        )
         return list(db.scalars(stmt).all())
 
     def create(self, assessment_in: AssessmentCreate, db: Session) -> Assessment:
@@ -138,6 +147,7 @@ class AssessmentService:
 
         stmt = (
             select(Assessment)
+            .options(selectinload(Assessment.usuario))
             .where(Assessment.empresa_id == empresa_id)
             .order_by(Assessment.created_at.desc())
         )
@@ -147,6 +157,7 @@ class AssessmentService:
         self,
         empresa_id: UUID,
         page: int,
+        tipo_avaliacao: Optional[TipoAvaliacao],
         db: Session,
     ) -> AssessmentPaginatedResponse:
         empresa = db.get(Enterprise, empresa_id)
@@ -157,11 +168,15 @@ class AssessmentService:
 
         stmt = (
             select(Assessment)
+            .options(selectinload(Assessment.usuario))
             .where(Assessment.empresa_id == empresa_id)
-            .order_by(Assessment.created_at.desc())
-            .offset(offset)
-            .limit(_PAGE_SIZE + 1)  # busca 1 a mais para saber se existe próxima página
         )
+
+        if tipo_avaliacao is not None:
+            stmt = stmt.where(Assessment.tipo_avaliacao == tipo_avaliacao)
+
+        stmt = stmt.order_by(Assessment.created_at.desc()).offset(offset).limit(_PAGE_SIZE + 1)
+
         rows = list(db.scalars(stmt).all())
 
         if not rows and page > 1:

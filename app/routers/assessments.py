@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
@@ -9,6 +10,7 @@ from app.schemas.assessments import (
     AssessmentPaginatedResponse,
     AssessmentResponse,
     AssessmentUpdate,
+    TipoAvaliacao,
 )
 from app.services.assessment_service import AssessmentService
 
@@ -80,9 +82,12 @@ def delete_assessment(
 def get_assessments_by_enterprise_paginated(
     empresa_id: UUID,
     page: int = Query(1, ge=1, description="Número da página (começa em 1)"),
+    tipo_avaliacao: Optional[TipoAvaliacao] = Query(
+        None, description="Filtro por tipo de avaliação"
+    ),
     db: Session = Depends(get_db),
 ) -> AssessmentPaginatedResponse:
-    return assessment_service.list_by_enterprise_paginated(empresa_id, page, db)
+    return assessment_service.list_by_enterprise_paginated(empresa_id, page, tipo_avaliacao, db)
 
 
 @router.get(

@@ -283,3 +283,56 @@ def test_given_soft_deleted_enterprise_when_context_built_then_returns_empty(db)
 
     # THEN
     assert context == ""
+
+
+# ---------------------------------------------------------------------------
+# SCRUM-224: nome do usuario no contexto
+# ---------------------------------------------------------------------------
+
+
+def _create_user(db, nome: str = "João da Silva") -> User:
+    user = User(
+        tipo_usuario=TipoUsuario.TURISTA,
+        nome=nome,
+        cpf=str(uuid.uuid4().int)[:11],
+    )
+    db.add(user)
+    db.commit()
+    return user
+
+
+def test_given_user_id_when_context_built_then_includes_user_name(db):
+    # GIVEN
+    empresa = _create_enterprise(db)
+    user = _create_user(db, nome="Maria das Dores")
+    service = ChatContextService()
+
+    # WHEN
+    context = service.build_context(empresa.id_empresa, db, user_id=user.id_usuario)
+
+    # THEN
+    assert "Maria das Dores" in context
+
+
+def test_given_user_id_none_when_context_built_then_skips_user_block(db):
+    # GIVEN
+    empresa = _create_enterprise(db)
+    service = ChatContextService()
+
+    # WHEN
+    context = service.build_context(empresa.id_empresa, db, user_id=None)
+
+    # THEN
+    assert "USUÁRIO" not in context
+
+
+def test_given_unknown_user_when_context_built_then_skips_user_block(db):
+    # GIVEN
+    empresa = _create_enterprise(db)
+    service = ChatContextService()
+
+    # WHEN
+    context = service.build_context(empresa.id_empresa, db, user_id=uuid.uuid4())
+
+    # THEN
+    assert "USUÁRIO" not in context

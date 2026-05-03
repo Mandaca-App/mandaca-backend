@@ -231,3 +231,87 @@ def test_given_enterprise_not_found_when_get_paginated_then_returns_404(db_mock)
         response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?page=1")
 
     assert response.status_code == 404
+
+
+def test_given_tipo_avaliacao_filter_when_get_paginated_then_returns_200(db_mock):
+    with patch(
+        "app.routers.assessments.assessment_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE,
+    ):
+        response = client.get(
+            f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated"
+            f"?page=1&tipo_avaliacao={TipoAvaliacao.POSITIVA.value}"
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["page"] == 1
+    assert data["items"][0]["tipo_avaliacao"] == TipoAvaliacao.POSITIVA
+
+
+def test_given_no_tipo_avaliacao_when_get_paginated_then_returns_200(db_mock):
+    with patch(
+        "app.routers.assessments.assessment_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE,
+    ):
+        response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?page=1")
+
+    assert response.status_code == 200
+    assert response.json()["page"] == 1
+
+
+def test_given_invalid_tipo_avaliacao_when_get_paginated_then_returns_422(db_mock):
+    response = client.get(
+        f"/assessments/by-enterprise/{ENTERPRISE_ID}/paginated?tipo_avaliacao=invalido"
+    )
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# SCRUM-224: usuario_nome na resposta dos GETs
+# ---------------------------------------------------------------------------
+
+
+_ASSESSMENT_WITH_USER = SimpleNamespace(
+    id_avaliacao=FAKE_ID,
+    texto="Avaliação teste",
+    tipo_avaliacao=TipoAvaliacao.POSITIVA,
+    usuario_id=USER_ID,
+    empresa_id=ENTERPRISE_ID,
+    created_at=_NOW,
+    usuario=SimpleNamespace(nome="Maria das Dores"),
+)
+
+
+def test_given_list_endpoint_when_called_then_each_item_has_usuario_nome(db_mock):
+    with patch(
+        "app.routers.assessments.assessment_service.list_all",
+        return_value=[_ASSESSMENT_WITH_USER],
+    ):
+        response = client.get("/assessments")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data[0]["usuario_nome"] == "Maria das Dores"
+
+
+def test_given_get_by_id_when_called_then_response_has_usuario_nome(db_mock):
+    with patch(
+        "app.routers.assessments.assessment_service.get_by_id",
+        return_value=_ASSESSMENT_WITH_USER,
+    ):
+        response = client.get(f"/assessments/{FAKE_ID}")
+
+    assert response.status_code == 200
+    assert response.json()["usuario_nome"] == "Maria das Dores"
+
+
+def test_given_list_by_enterprise_when_called_then_items_have_usuario_nome(db_mock):
+    with patch(
+        "app.routers.assessments.assessment_service.list_by_enterprise",
+        return_value=[_ASSESSMENT_WITH_USER],
+    ):
+        response = client.get(f"/assessments/by-enterprise/{ENTERPRISE_ID}")
+
+    assert response.status_code == 200
+    assert response.json()[0]["usuario_nome"] == "Maria das Dores"

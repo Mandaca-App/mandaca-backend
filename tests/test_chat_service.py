@@ -15,6 +15,7 @@ from app.services.chat_service import _CHAT_MODEL, ChatService
 
 FAKE_REPLY = "Para melhorar suas vendas, comece identificando seu público-alvo."
 FAKE_ENTERPRISE_ID = uuid.uuid4()
+FAKE_USER_ID = uuid.uuid4()
 
 
 def _mock_groq_client(reply: str | None = FAKE_REPLY) -> MagicMock:
@@ -50,7 +51,9 @@ async def test_given_valid_message_when_sent_then_returns_reply():
     db = _mock_db()
 
     # WHEN
-    result = await service.send_message("Como melhorar minhas vendas?", FAKE_ENTERPRISE_ID, db)
+    result = await service.send_message(
+        "Como melhorar minhas vendas?", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db
+    )
 
     # THEN
     assert result == FAKE_REPLY
@@ -64,7 +67,9 @@ async def test_given_valid_message_when_sent_then_uses_versatile_model():
     db = _mock_db()
 
     # WHEN
-    await service.send_message("Qual o melhor horário para abrir?", FAKE_ENTERPRISE_ID, db)
+    await service.send_message(
+        "Qual o melhor horário para abrir?", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db
+    )
 
     # THEN
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
@@ -79,7 +84,7 @@ async def test_given_valid_message_when_sent_then_includes_system_prompt():
     db = _mock_db()
 
     # WHEN
-    await service.send_message("Como formalizar meu negócio?", FAKE_ENTERPRISE_ID, db)
+    await service.send_message("Como formalizar meu negócio?", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     # THEN
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
@@ -105,7 +110,7 @@ async def test_given_rate_limit_when_sent_then_raises_chat_rate_limit():
 
     # WHEN / THEN
     with pytest.raises(ChatRateLimitError) as exc_info:
-        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     assert "Tente novamente" in str(exc_info.value)
 
@@ -122,7 +127,7 @@ async def test_given_timeout_when_sent_then_raises_chat_service_timeout():
 
     # WHEN / THEN
     with pytest.raises(ChatServiceTimeoutError) as exc_info:
-        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     assert "demorou demais" in str(exc_info.value)
 
@@ -139,7 +144,7 @@ async def test_given_connection_error_when_sent_then_raises_connection_error():
 
     # WHEN / THEN
     with pytest.raises(ChatServiceConnectionError) as exc_info:
-        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     assert "conectar" in str(exc_info.value)
 
@@ -158,7 +163,7 @@ async def test_given_api_status_error_when_sent_then_raises_chat_service_error()
 
     # WHEN / THEN
     with pytest.raises(ChatServiceError) as exc_info:
-        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
+        await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     assert "inesperado" in str(exc_info.value)
 
@@ -172,7 +177,7 @@ async def test_given_none_content_when_groq_returns_then_returns_empty_string():
     db = _mock_db()
 
     # WHEN
-    result = await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
+    result = await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     # THEN
     assert result == ""
@@ -195,7 +200,7 @@ async def test_given_context_available_when_message_sent_then_context_injected_i
     db = _mock_db()
 
     # WHEN
-    await service.send_message("Como melhorar minhas vendas?", FAKE_ENTERPRISE_ID, db)
+    await service.send_message("Como melhorar minhas vendas?", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     # THEN
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
@@ -212,9 +217,28 @@ async def test_given_empty_context_when_message_sent_then_system_prompt_unchange
     db = _mock_db()
 
     # WHEN
-    await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, db)
+    await service.send_message("Qualquer mensagem", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     # THEN
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
     system_content = call_kwargs["messages"][0]["content"]
     assert "===" not in system_content
+
+
+# ---------------------------------------------------------------------------
+# SCRUM-224: propagacao do user_id ao ChatContextService
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_given_user_id_when_send_message_then_passes_to_context_service():
+    # GIVEN
+    context_service = _mock_context_service()
+    service = ChatService(groq_client=_mock_groq_client(), context_service=context_service)
+    db = _mock_db()
+
+    # WHEN
+    await service.send_message("oi", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
+
+    # THEN
+    context_service.build_context.assert_called_once_with(FAKE_ENTERPRISE_ID, db, FAKE_USER_ID)
