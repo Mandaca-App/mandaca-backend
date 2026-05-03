@@ -44,10 +44,15 @@ _HORARIO_PATTERN = re.compile(r"^(\d{2}:\d{2})-(\d{2}:\d{2})$")
 
 class AutoApplyService:
     def apply(
-        self, payload: AutoApplyRequest, db: Session, *, commit: bool = True
+        self,
+        enterprise_id: UUID,
+        payload: AutoApplyRequest,
+        db: Session,
+        *,
+        commit: bool = True,
     ) -> AutoApplyResponse:
         if payload.target == AutoApplyTarget.ENTERPRISE:
-            self._apply_to_enterprise(payload, db)
+            self._apply_to_enterprise(enterprise_id, payload, db)
         else:
             self._apply_to_menu_item(payload, db)
 
@@ -59,11 +64,13 @@ class AutoApplyService:
             status=SuggestionStatus.APPLIED,
         )
 
-    def _apply_to_enterprise(self, payload: AutoApplyRequest, db: Session) -> None:
+    def _apply_to_enterprise(
+        self, enterprise_id: UUID, payload: AutoApplyRequest, db: Session
+    ) -> None:
         if payload.campo_para_alterar not in _ENTERPRISE_FIELD_MAP:
             raise FieldNotAllowedError(payload.campo_para_alterar)
 
-        enterprise = self._get_enterprise(payload.enterprise_id, db)
+        enterprise = self._get_enterprise(enterprise_id, db)
 
         if payload.campo_para_alterar == "horario_funcionamento":
             hora_abrir, hora_fechar = self._parse_horario(payload.novo_valor)
