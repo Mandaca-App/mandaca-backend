@@ -70,7 +70,7 @@ async def test_given_valid_message_when_sent_then_persists_chat_message(db):
     service = ChatService(groq_client=_mock_groq_client())
 
     # WHEN
-    await service.send_message(FAKE_MESSAGE, empresa.id_empresa, db)
+    await service.send_message(FAKE_MESSAGE, empresa.id_empresa, uuid.uuid4(), db)
 
     # THEN
     saved = db.scalars(
@@ -88,7 +88,7 @@ async def test_given_valid_message_when_sent_then_reply_matches_groq_response(db
     service = ChatService(groq_client=_mock_groq_client())
 
     # WHEN
-    result = await service.send_message(FAKE_MESSAGE, empresa.id_empresa, db)
+    result = await service.send_message(FAKE_MESSAGE, empresa.id_empresa, uuid.uuid4(), db)
 
     # THEN
     assert result == FAKE_REPLY
@@ -106,7 +106,7 @@ async def test_given_rate_limit_error_when_sent_then_does_not_persist(db):
 
     # WHEN / THEN
     with pytest.raises(ChatRateLimitError):
-        await service.send_message(FAKE_MESSAGE, empresa.id_empresa, db)
+        await service.send_message(FAKE_MESSAGE, empresa.id_empresa, uuid.uuid4(), db)
 
     assert db.scalar(select(func.count(ChatMessage.id_mensagem))) == 0
 
@@ -123,7 +123,7 @@ async def test_given_timeout_error_when_sent_then_does_not_persist(db):
 
     # WHEN / THEN
     with pytest.raises(ChatServiceTimeoutError):
-        await service.send_message(FAKE_MESSAGE, empresa.id_empresa, db)
+        await service.send_message(FAKE_MESSAGE, empresa.id_empresa, uuid.uuid4(), db)
 
     assert db.scalar(select(func.count(ChatMessage.id_mensagem))) == 0
 
@@ -140,7 +140,7 @@ async def test_given_connection_error_when_sent_then_does_not_persist(db):
 
     # WHEN / THEN
     with pytest.raises(ChatServiceConnectionError):
-        await service.send_message(FAKE_MESSAGE, empresa.id_empresa, db)
+        await service.send_message(FAKE_MESSAGE, empresa.id_empresa, uuid.uuid4(), db)
 
     assert db.scalar(select(func.count(ChatMessage.id_mensagem))) == 0
 
@@ -155,7 +155,7 @@ async def test_given_db_failure_after_groq_when_committing_then_rolls_back(db):
         with patch.object(db, "rollback") as mock_rollback:
             # WHEN / THEN
             with pytest.raises(Exception, match="DB unavailable"):
-                await service.send_message(FAKE_MESSAGE, empresa.id_empresa, db)
+                await service.send_message(FAKE_MESSAGE, empresa.id_empresa, uuid.uuid4(), db)
 
     mock_rollback.assert_called_once()
 

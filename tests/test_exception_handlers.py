@@ -271,7 +271,11 @@ def test_given_timeout_when_transcribing_then_returns_504():
 # ---------------------------------------------------------------------------
 
 _CHAT_POST = "/chat/message"
-_CHAT_BODY = {"empresa_id": FAKE_UUID, "mensagem": "Como melhorar minhas vendas?"}
+_CHAT_BODY = {
+    "empresa_id": FAKE_UUID,
+    "usuario_id": FAKE_UUID,
+    "mensagem": "Como melhorar minhas vendas?",
+}
 
 
 def test_given_chat_rate_limit_when_sending_then_returns_429():
