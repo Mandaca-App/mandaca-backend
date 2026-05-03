@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 class ChatMessageCreate(BaseModel):
     empresa_id: UUID
+    usuario_id: UUID
     mensagem: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
     ]

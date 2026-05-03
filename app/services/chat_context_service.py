@@ -6,17 +6,33 @@ from sqlalchemy.orm import Session
 from app.models.assessment import Assessment, TipoAvaliacao
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
+from app.models.user import User
 
 _MAX_ASSESSMENTS = 5
 
 
 class ChatContextService:
-    def build_context(self, empresa_id: uuid.UUID, db: Session) -> str:
+    def build_context(
+        self,
+        empresa_id: uuid.UUID,
+        db: Session,
+        user_id: uuid.UUID | None = None,
+    ) -> str:
         empresa = db.get(Enterprise, empresa_id)
         if not empresa or empresa.deleted_at is not None:
             return ""
 
-        parts: list[str] = ["=== CONTEXTO DO ESTABELECIMENTO ==="]
+        parts: list[str] = []
+
+        if user_id is not None:
+            usuario = db.get(User, user_id)
+            if usuario is not None:
+                parts.append("=== USUÁRIO ===")
+                parts.append(f"Nome: {usuario.nome}")
+                parts.append("Dirija-se ao usuário pelo nome quando apropriado.")
+                parts.append("")
+
+        parts.append("=== CONTEXTO DO ESTABELECIMENTO ===")
 
         parts.append(f"Nome: {empresa.nome}")
         if empresa.especialidade:
