@@ -26,6 +26,7 @@ class AssessmentResponse(BaseModel):
     texto: str
     tipo_avaliacao: TipoAvaliacao  # serializado como inteiro (0-4)
     usuario_id: UUID
+    usuario_nome: str
     empresa_id: UUID
     created_at: datetime
 

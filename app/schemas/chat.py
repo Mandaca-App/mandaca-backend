@@ -10,6 +10,7 @@ class ChatMessageCreate(BaseModel):
     mensagem: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
     ]
+    nome_usuario: str | None = None
 
 
 class ChatMessageResponse(BaseModel):

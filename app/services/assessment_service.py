@@ -4,7 +4,7 @@ from uuid import UUID
 from google import genai
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.core.exceptions import (
@@ -157,6 +157,7 @@ class AssessmentService:
 
         stmt = (
             select(Assessment)
+            .options(joinedload(Assessment.usuario))
             .where(Assessment.empresa_id == empresa_id)
             .order_by(Assessment.created_at.desc())
             .offset(offset)
@@ -169,8 +170,21 @@ class AssessmentService:
 
         has_more = len(rows) > _PAGE_SIZE
 
+        items = [
+            {
+                "id_avaliacao": a.id_avaliacao,
+                "texto": a.texto,
+                "tipo_avaliacao": a.tipo_avaliacao,
+                "usuario_id": a.usuario_id,
+                "usuario_nome": a.usuario.nome if a.usuario else "Anônimo",
+                "empresa_id": a.empresa_id,
+                "created_at": a.created_at,
+            }
+            for a in rows[:_PAGE_SIZE]
+        ]
+
         return {
             "page": page,
-            "items": rows[:_PAGE_SIZE],
+            "items": items,
             "has_more": has_more,
         }
