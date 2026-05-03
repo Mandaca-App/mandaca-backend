@@ -28,7 +28,12 @@ from app.main import app
 from app.services.chat_service import ChatService
 
 FAKE_UUID = "00000000-0000-0000-0000-000000000001"
-_VALID_BODY = {"empresa_id": FAKE_UUID, "mensagem": "Como melhorar minhas vendas?"}
+FAKE_USER_UUID = "00000000-0000-0000-0000-000000000010"
+_VALID_BODY = {
+    "empresa_id": FAKE_UUID,
+    "usuario_id": FAKE_USER_UUID,
+    "mensagem": "Como melhorar minhas vendas?",
+}
 _FAKE_REPLY = "Foque em divulgar seus produtos nas redes sociais locais."
 
 _FAKE_HISTORY = [
@@ -71,7 +76,24 @@ def test_given_missing_enterprise_id_when_message_sent_then_returns_422():
     client = TestClient(app, raise_server_exceptions=False)
 
     # WHEN
-    response = client.post("/chat/message", json={"mensagem": "Qualquer pergunta"})
+    response = client.post(
+        "/chat/message",
+        json={"usuario_id": FAKE_USER_UUID, "mensagem": "Qualquer pergunta"},
+    )
+
+    # THEN
+    assert response.status_code == 422
+
+
+def test_given_missing_user_id_when_message_sent_then_returns_422():
+    # GIVEN
+    client = TestClient(app, raise_server_exceptions=False)
+
+    # WHEN
+    response = client.post(
+        "/chat/message",
+        json={"empresa_id": FAKE_UUID, "mensagem": "Qualquer pergunta"},
+    )
 
     # THEN
     assert response.status_code == 422
@@ -83,7 +105,12 @@ def test_given_invalid_uuid_when_message_sent_then_returns_422():
 
     # WHEN
     response = client.post(
-        "/chat/message", json={"empresa_id": "nao-e-um-uuid", "mensagem": "Qualquer pergunta"}
+        "/chat/message",
+        json={
+            "empresa_id": "nao-e-um-uuid",
+            "usuario_id": FAKE_USER_UUID,
+            "mensagem": "Qualquer pergunta",
+        },
     )
 
     # THEN
@@ -95,7 +122,10 @@ def test_given_missing_message_when_message_sent_then_returns_422():
     client = TestClient(app, raise_server_exceptions=False)
 
     # WHEN
-    response = client.post("/chat/message", json={"empresa_id": FAKE_UUID})
+    response = client.post(
+        "/chat/message",
+        json={"empresa_id": FAKE_UUID, "usuario_id": FAKE_USER_UUID},
+    )
 
     # THEN
     assert response.status_code == 422
@@ -106,7 +136,10 @@ def test_given_whitespace_only_message_when_sent_then_returns_422():
     client = TestClient(app, raise_server_exceptions=False)
 
     # WHEN
-    response = client.post("/chat/message", json={"empresa_id": FAKE_UUID, "mensagem": "   "})
+    response = client.post(
+        "/chat/message",
+        json={"empresa_id": FAKE_UUID, "usuario_id": FAKE_USER_UUID, "mensagem": "   "},
+    )
 
     # THEN
     assert response.status_code == 422
@@ -115,7 +148,11 @@ def test_given_whitespace_only_message_when_sent_then_returns_422():
 def test_given_message_over_max_length_when_sent_then_returns_422():
     # GIVEN
     client = TestClient(app, raise_server_exceptions=False)
-    body = {"empresa_id": FAKE_UUID, "mensagem": "x" * 2001}
+    body = {
+        "empresa_id": FAKE_UUID,
+        "usuario_id": FAKE_USER_UUID,
+        "mensagem": "x" * 2001,
+    }
 
     # WHEN
     response = client.post("/chat/message", json=body)
