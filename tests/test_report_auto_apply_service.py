@@ -150,9 +150,10 @@ def test_given_auto_apply_items_when_applied_then_request_uses_report_empresa_id
     # WHEN
     service.apply_from_report(FAKE_REPORT_ID, db)
 
-    # THEN — empresa_id do relatório é propagado para o AutoApplyRequest
-    request_arg = auto_apply.apply.call_args[0][0]
-    assert request_arg.enterprise_id == FAKE_ENTERPRISE_ID
+    # THEN — empresa_id do relatório é propagado como primeiro argumento ao service
+    enterprise_id_arg = auto_apply.apply.call_args[0][0]
+    request_arg = auto_apply.apply.call_args[0][1]
+    assert enterprise_id_arg == FAKE_ENTERPRISE_ID
     assert request_arg.target == AutoApplyTarget.ENTERPRISE
     assert request_arg.campo_para_alterar == "telefone"
 

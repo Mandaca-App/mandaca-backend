@@ -38,9 +38,8 @@ def test_given_valid_payload_when_auto_apply_then_returns_200():
 
     # WHEN
     response = client.post(
-        "/auto-apply",
+        f"/auto-apply/{FAKE_ENTERPRISE_ID}",
         json={
-            "enterprise_id": str(FAKE_ENTERPRISE_ID),
             "target": "enterprise",
             "campo_para_alterar": "historia",
             "novo_valor": "Nova historia",
@@ -62,9 +61,8 @@ def test_given_missing_enterprise_when_auto_apply_then_returns_404():
 
     # WHEN
     response = client.post(
-        "/auto-apply",
+        f"/auto-apply/{FAKE_ENTERPRISE_ID}",
         json={
-            "enterprise_id": str(FAKE_ENTERPRISE_ID),
             "target": "enterprise",
             "campo_para_alterar": "historia",
             "novo_valor": "x",
@@ -83,9 +81,8 @@ def test_given_forbidden_field_when_auto_apply_then_returns_422():
 
     # WHEN
     response = client.post(
-        "/auto-apply",
+        f"/auto-apply/{FAKE_ENTERPRISE_ID}",
         json={
-            "enterprise_id": str(FAKE_ENTERPRISE_ID),
             "target": "enterprise",
             "campo_para_alterar": "owner_id",
             "novo_valor": "x",
@@ -104,9 +101,8 @@ def test_given_invalid_value_when_auto_apply_then_returns_422():
 
     # WHEN
     response = client.post(
-        "/auto-apply",
+        f"/auto-apply/{FAKE_ENTERPRISE_ID}",
         json={
-            "enterprise_id": str(FAKE_ENTERPRISE_ID),
             "target": "menu_item",
             "menu_item_id": str(uuid.uuid4()),
             "campo_para_alterar": "preco",
@@ -121,7 +117,7 @@ def test_given_invalid_value_when_auto_apply_then_returns_422():
 def test_given_invalid_json_when_auto_apply_then_returns_422():
     # WHEN
     client = TestClient(app, raise_server_exceptions=False)
-    response = client.post("/auto-apply", json={"enterprise_id": "not-a-uuid"})
+    response = client.post(f"/auto-apply/{FAKE_ENTERPRISE_ID}", json={"target": "INVALIDO"})
 
     # THEN
     assert response.status_code == 422

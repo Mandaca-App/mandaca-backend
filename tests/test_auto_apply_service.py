@@ -68,14 +68,13 @@ def test_given_valid_historia_when_applied_then_updates_enterprise() -> None:
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="historia",
         novo_valor="Nova história",
     )
 
     # WHEN
-    response = AutoApplyService().apply(payload, db)
+    response = AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
     # THEN
     assert enterprise.historia == "Nova história"
@@ -89,14 +88,13 @@ def test_given_commit_false_when_applied_then_skips_commit() -> None:
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="historia",
         novo_valor="Sem commit",
     )
 
     # WHEN
-    response = AutoApplyService().apply(payload, db, commit=False)
+    response = AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db, commit=False)
 
     # THEN
     assert enterprise.historia == "Sem commit"
@@ -109,14 +107,13 @@ def test_given_telefone_when_applied_then_updates_enterprise() -> None:
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="telefone",
         novo_valor="81999999999",
     )
 
     # WHEN
-    AutoApplyService().apply(payload, db)
+    AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
     # THEN
     assert enterprise.telefone == "81999999999"
@@ -127,14 +124,13 @@ def test_given_horario_when_applied_then_parses_and_sets_both_columns() -> None:
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="horario_funcionamento",
         novo_valor="08:00-18:30",
     )
 
     # WHEN
-    AutoApplyService().apply(payload, db)
+    AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
     # THEN
     assert enterprise.hora_abrir == time(8, 0)
@@ -151,7 +147,6 @@ def test_given_valid_preco_when_applied_then_updates_menu() -> None:
     menu = _make_menu()
     db = _mock_db_with(menu)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.MENU_ITEM,
         menu_item_id=FAKE_MENU_ID,
         campo_para_alterar="preco",
@@ -159,7 +154,7 @@ def test_given_valid_preco_when_applied_then_updates_menu() -> None:
     )
 
     # WHEN
-    response = AutoApplyService().apply(payload, db)
+    response = AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
     # THEN
     assert menu.preco == Decimal("42.50")
@@ -171,7 +166,6 @@ def test_given_logical_nome_when_applied_then_writes_to_descricao_column() -> No
     menu = _make_menu()
     db = _mock_db_with(menu)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.MENU_ITEM,
         menu_item_id=FAKE_MENU_ID,
         campo_para_alterar="nome",
@@ -179,7 +173,7 @@ def test_given_logical_nome_when_applied_then_writes_to_descricao_column() -> No
     )
 
     # WHEN
-    AutoApplyService().apply(payload, db)
+    AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
     # THEN
     assert menu.descricao == "Novo nome do prato"
@@ -190,7 +184,6 @@ def test_given_logical_descricao_when_applied_then_writes_to_historia_column() -
     menu = _make_menu()
     db = _mock_db_with(menu)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.MENU_ITEM,
         menu_item_id=FAKE_MENU_ID,
         campo_para_alterar="descricao",
@@ -198,7 +191,7 @@ def test_given_logical_descricao_when_applied_then_writes_to_historia_column() -
     )
 
     # WHEN
-    AutoApplyService().apply(payload, db)
+    AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
     # THEN
     assert menu.historia == "Descrição longa do item"
@@ -214,7 +207,6 @@ def test_given_field_outside_whitelist_when_applied_then_raises_422() -> None:
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="owner_id",
         novo_valor="qualquer",
@@ -222,7 +214,7 @@ def test_given_field_outside_whitelist_when_applied_then_raises_422() -> None:
 
     # WHEN / THEN
     with pytest.raises(FieldNotAllowedError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
     db.commit.assert_not_called()
 
 
@@ -231,7 +223,6 @@ def test_given_menu_field_outside_whitelist_when_applied_then_raises_422() -> No
     menu = _make_menu()
     db = _mock_db_with(menu)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.MENU_ITEM,
         menu_item_id=FAKE_MENU_ID,
         campo_para_alterar="categoria",
@@ -240,14 +231,13 @@ def test_given_menu_field_outside_whitelist_when_applied_then_raises_422() -> No
 
     # WHEN / THEN
     with pytest.raises(FieldNotAllowedError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
 def test_given_target_menu_without_id_when_validated_then_raises_422() -> None:
     # GIVEN / WHEN / THEN
     with pytest.raises(ValueError):
         AutoApplyRequest(
-            enterprise_id=FAKE_ENTERPRISE_ID,
             target=AutoApplyTarget.MENU_ITEM,
             campo_para_alterar="preco",
             novo_valor="10.00",
@@ -263,7 +253,6 @@ def test_given_missing_enterprise_when_applied_then_raises_404() -> None:
     # GIVEN
     db = _mock_db_with(None)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="historia",
         novo_valor="x",
@@ -271,14 +260,13 @@ def test_given_missing_enterprise_when_applied_then_raises_404() -> None:
 
     # WHEN / THEN
     with pytest.raises(EnterpriseNotFoundError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
 def test_given_missing_menu_item_when_applied_then_raises_404() -> None:
     # GIVEN
     db = _mock_db_with(None)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.MENU_ITEM,
         menu_item_id=FAKE_MENU_ID,
         campo_para_alterar="preco",
@@ -287,7 +275,7 @@ def test_given_missing_menu_item_when_applied_then_raises_404() -> None:
 
     # WHEN / THEN
     with pytest.raises(MenuNotFoundError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
 # ---------------------------------------------------------------------------
@@ -300,7 +288,6 @@ def test_given_invalid_preco_value_when_applied_then_raises_422() -> None:
     menu = _make_menu()
     db = _mock_db_with(menu)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.MENU_ITEM,
         menu_item_id=FAKE_MENU_ID,
         campo_para_alterar="preco",
@@ -309,7 +296,7 @@ def test_given_invalid_preco_value_when_applied_then_raises_422() -> None:
 
     # WHEN / THEN
     with pytest.raises(InvalidFieldValueError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
 def test_given_invalid_horario_format_when_applied_then_raises_422() -> None:
@@ -317,7 +304,6 @@ def test_given_invalid_horario_format_when_applied_then_raises_422() -> None:
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="horario_funcionamento",
         novo_valor="das 8 ate 18",
@@ -325,7 +311,7 @@ def test_given_invalid_horario_format_when_applied_then_raises_422() -> None:
 
     # WHEN / THEN
     with pytest.raises(InvalidFieldValueError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
 def test_given_invalid_horario_time_when_applied_then_raises_422() -> None:
@@ -333,7 +319,6 @@ def test_given_invalid_horario_time_when_applied_then_raises_422() -> None:
     enterprise = _make_enterprise()
     db = _mock_db_with(enterprise)
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="horario_funcionamento",
         novo_valor="25:00-99:00",
@@ -341,7 +326,7 @@ def test_given_invalid_horario_time_when_applied_then_raises_422() -> None:
 
     # WHEN / THEN
     with pytest.raises(InvalidFieldValueError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
 
 
 # ---------------------------------------------------------------------------
@@ -355,7 +340,6 @@ def test_given_db_failure_when_applied_then_raises_persistence_error() -> None:
     db = _mock_db_with(enterprise)
     db.commit.side_effect = RuntimeError("connection lost")
     payload = AutoApplyRequest(
-        enterprise_id=FAKE_ENTERPRISE_ID,
         target=AutoApplyTarget.ENTERPRISE,
         campo_para_alterar="historia",
         novo_valor="x",
@@ -363,5 +347,5 @@ def test_given_db_failure_when_applied_then_raises_persistence_error() -> None:
 
     # WHEN / THEN
     with pytest.raises(AutoApplyPersistenceError):
-        AutoApplyService().apply(payload, db)
+        AutoApplyService().apply(FAKE_ENTERPRISE_ID, payload, db)
     db.rollback.assert_called_once()
