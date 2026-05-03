@@ -156,16 +156,12 @@ class AssessmentService:
 
         offset = (page - 1) * _PAGE_SIZE
 
-        stmt = (
-            select(Assessment)
-            .where(Assessment.empresa_id == empresa_id)
-            .order_by(Assessment.created_at.desc())
-            .offset(offset)
-            .limit(_PAGE_SIZE + 1)
-        )
+        stmt = select(Assessment).where(Assessment.empresa_id == empresa_id)
 
         if tipo_avaliacao is not None:
             stmt = stmt.where(Assessment.tipo_avaliacao == tipo_avaliacao)
+
+        stmt = stmt.order_by(Assessment.created_at.desc()).offset(offset).limit(_PAGE_SIZE + 1)
 
         rows = list(db.scalars(stmt).all())
 

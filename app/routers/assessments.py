@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
-from app.models.assessment import TipoAvaliacao
 from app.schemas.assessments import (
     AssessmentCreate,
     AssessmentPaginatedResponse,
     AssessmentResponse,
     AssessmentUpdate,
+    TipoAvaliacao,
 )
 from app.services.assessment_service import AssessmentService
 
