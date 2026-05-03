@@ -127,7 +127,7 @@ def test_given_enterprise_not_found_when_paginated_then_raises():
     db.get.return_value = None  # empresa não existe
 
     with pytest.raises(EnterpriseNotFoundError):
-        service.list_by_enterprise_paginated(uuid.uuid4(), page=1, db=db)
+        service.list_by_enterprise_paginated(uuid.uuid4(), page=1, tipo_avaliacao=None, db=db)
 
 
 def test_given_empty_page_when_paginated_then_raises_page_empty():
@@ -140,7 +140,7 @@ def test_given_empty_page_when_paginated_then_raises_page_empty():
     db.scalars.return_value = scalars_mock
 
     with pytest.raises(AssessmentPageEmptyError) as exc_info:
-        service.list_by_enterprise_paginated(uuid.uuid4(), page=5, db=db)
+        service.list_by_enterprise_paginated(uuid.uuid4(), page=5, tipo_avaliacao=None, db=db)
 
     assert exc_info.value.page == 5
 
@@ -156,7 +156,7 @@ def test_given_exactly_10_assessments_when_paginated_then_has_more_false():
     scalars_mock.all.return_value = items  # exatamente 10, sem o extra
     db.scalars.return_value = scalars_mock
 
-    result = service.list_by_enterprise_paginated(empresa_id, page=1, db=db)
+    result = service.list_by_enterprise_paginated(uuid.uuid4(), page=1, tipo_avaliacao=None, db=db)
 
     assert result["page"] == 1
     assert len(result["items"]) == 10
@@ -175,7 +175,7 @@ def test_given_11_assessments_when_paginated_page_1_then_has_more_true():
     scalars_mock.all.return_value = items
     db.scalars.return_value = scalars_mock
 
-    result = service.list_by_enterprise_paginated(empresa_id, page=1, db=db)
+    result = service.list_by_enterprise_paginated(uuid.uuid4(), page=1, tipo_avaliacao=None, db=db)
 
     assert result["has_more"] is True
     assert len(result["items"]) == 10
@@ -191,7 +191,7 @@ def test_given_empty_page_1_when_paginated_then_returns_empty_200():
     scalars_mock.all.return_value = []  # nenhuma avaliação
     db.scalars.return_value = scalars_mock
 
-    result = service.list_by_enterprise_paginated(uuid.uuid4(), page=1, db=db)
+    result = service.list_by_enterprise_paginated(uuid.uuid4(), page=1, tipo_avaliacao=None, db=db)
 
     assert result["page"] == 1
     assert result["items"] == []
@@ -209,6 +209,43 @@ def test_given_empty_page_beyond_1_when_paginated_then_raises():
     db.scalars.return_value = scalars_mock
 
     with pytest.raises(AssessmentPageEmptyError) as exc_info:
-        service.list_by_enterprise_paginated(uuid.uuid4(), page=5, db=db)
+        service.list_by_enterprise_paginated(uuid.uuid4(), page=5, tipo_avaliacao=None, db=db)
 
     assert exc_info.value.page == 5
+
+
+def test_given_tipo_avaliacao_filter_when_paginated_then_applies_where_clause():
+    service = AssessmentService()
+    empresa_id = uuid.uuid4()
+    db = MagicMock()
+    db.get.return_value = MagicMock()
+
+    assessment = _make_assessment(empresa_id)
+    assessment.tipo_avaliacao = TipoAvaliacao.POSITIVA
+
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = [assessment]
+    db.scalars.return_value = scalars_mock
+
+    result = service.list_by_enterprise_paginated(
+        empresa_id, page=1, tipo_avaliacao=TipoAvaliacao.POSITIVA, db=db
+    )
+
+    assert len(result["items"]) == 1
+    assert result["items"][0].tipo_avaliacao == TipoAvaliacao.POSITIVA
+
+
+def test_given_no_tipo_avaliacao_filter_when_paginated_then_returns_all_types():
+    service = AssessmentService()
+    empresa_id = uuid.uuid4()
+    db = MagicMock()
+    db.get.return_value = MagicMock()
+
+    items = [_make_assessment(empresa_id) for _ in range(3)]
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = items
+    db.scalars.return_value = scalars_mock
+
+    result = service.list_by_enterprise_paginated(empresa_id, page=1, tipo_avaliacao=None, db=db)
+
+    assert len(result["items"]) == 3
