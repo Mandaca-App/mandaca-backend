@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
@@ -13,13 +15,14 @@ def get_auto_apply_service() -> AutoApplyService:
 
 
 @router.post(
-    "",
+    "/{enterprise_id}",
     response_model=AutoApplyResponse,
     status_code=status.HTTP_200_OK,
 )
 async def auto_apply(
+    enterprise_id: UUID,
     payload: AutoApplyRequest,
     db: Session = Depends(get_db),
     service: AutoApplyService = Depends(get_auto_apply_service),
 ) -> AutoApplyResponse:
-    return service.apply(payload, db)
+    return service.apply(enterprise_id, payload, db)

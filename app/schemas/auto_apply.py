@@ -10,7 +10,6 @@ class AutoApplyTarget(str, Enum):
 
 
 class AutoApplyRequest(BaseModel):
-    enterprise_id: UUID
     target: AutoApplyTarget
     menu_item_id: UUID | None = None
     campo_para_alterar: str = Field(min_length=1, max_length=50)

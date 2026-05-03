@@ -74,13 +74,12 @@ class ReportAutoApplyService:
     ) -> AutoApplySuggestionResult:
         try:
             request = AutoApplyRequest(
-                enterprise_id=empresa_id,
                 target=sugestao.target,
                 menu_item_id=sugestao.menu_item_id,
                 campo_para_alterar=sugestao.campo_para_alterar,
                 novo_valor=sugestao.novo_valor,
             )
-            self._auto_apply_service.apply(request, db, commit=False)
+            self._auto_apply_service.apply(empresa_id, request, db, commit=False)
             return AutoApplySuggestionResult(
                 sugestao=sugestao,
                 status=SuggestionStatus.APPLIED,
