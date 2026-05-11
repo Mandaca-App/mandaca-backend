@@ -28,7 +28,10 @@ from app.core.exceptions import (
     UnsupportedAudioFormatError,
 )
 from app.models.enterprise import Enterprise
-from app.schemas.transcriptions import EnterpriseFromAudioResponse  # noqa: F401
+from app.schemas.transcriptions import (
+    AudioTranscriptionResponse,
+    EnterpriseFromAudioResponse,
+)  # noqa: F401
 from app.services.transcription_service import (
     _extract_fields,
     _get_extension,
@@ -377,6 +380,27 @@ async def test_given_llm_returns_invalid_types_when_extracted_then_returns_empty
 
     # THEN — ValidationError capturado, retorna dict vazio sem quebrar o fluxo
     assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# Testes de AudioTranscriptionResponse (schema novo)
+# ---------------------------------------------------------------------------
+
+
+def test_given_transcription_text_when_schema_created_then_maps_correctly():
+    # GIVEN / WHEN
+    response = AudioTranscriptionResponse(transcription=FAKE_TRANSCRIPTION)
+
+    # THEN
+    assert response.transcription == FAKE_TRANSCRIPTION
+
+
+def test_given_empty_string_when_schema_created_then_accepts_it():
+    # GIVEN / WHEN — pode ocorrer se o áudio não tiver fala detectável
+    response = AudioTranscriptionResponse(transcription="")
+
+    # THEN
+    assert response.transcription == ""
 
 
 # ---------------------------------------------------------------------------

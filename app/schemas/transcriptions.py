@@ -13,3 +13,7 @@ class EnterpriseFromAudioResponse(BaseModel):
     endereco: str | None = None
     historia: str | None = None
     telefone: str | None = None
+
+
+class AudioTranscriptionResponse(BaseModel):
+    transcription: str
