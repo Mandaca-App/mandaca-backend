@@ -30,9 +30,7 @@ _RESPONSE = EnterpriseFromAudioResponse(
 _AUDIO_FILES = {"audio": ("gravacao.webm", BytesIO(b"fake-audio"), "audio/webm")}
 _FORM_DATA = {"usuario_id": str(FAKE_USER_ID)}
 
-FAKE_TRANSCRIPTION_TEXT = (
-    "Quero saber o horário de funcionamento e se vocês aceitam cartão."
-)
+FAKE_TRANSCRIPTION_TEXT = "Quero saber o horário de funcionamento e se vocês aceitam cartão."
 
 
 # ---------------------------------------------------------------------------
