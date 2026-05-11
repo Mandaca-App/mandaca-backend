@@ -41,7 +41,7 @@ async def create_enterprise_from_audio(
 async def transcribe_audio(
     audio: UploadFile = File(..., description="Arquivo de áudio (máx 25 MB)"),
 ) -> AudioTranscriptionResponse:
-    """Transcreve um arquivo de áudio e retorna apenas o texto — sem persistência no BD. 
+    """Transcreve um arquivo de áudio e retorna apenas o texto — sem persistência no BD.
     Usado pelo chatbot para converter a mensagem de voz do usuário em texto"""
     texto = await transcribe_audio_only(file=audio)
     return AudioTranscriptionResponse(transcription=texto)
