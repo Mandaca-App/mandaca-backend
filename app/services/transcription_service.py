@@ -72,6 +72,25 @@ class _ExtractedFields(BaseModel):
     telefone: str | None = None
 
 
+async def transcribe_audio_only(file: UploadFile) -> str:
+    """Transcreve um arquivo de áudio e retorna apenas o texto — sem persistência no BD.
+    Usado pelo chatbot para converter a mensagem de voz do usuário em texto
+    """
+    if file.content_type not in ALLOWED_AUDIO_TYPES:
+        raise UnsupportedAudioFormatError(file.content_type or "desconhecido")
+
+    if file.size is not None and file.size > MAX_AUDIO_BYTES:
+        raise AudioTooLargeError()
+
+    file_content = await file.read()
+
+    if len(file_content) > MAX_AUDIO_BYTES:
+        raise AudioTooLargeError()
+
+    client = AsyncGroq(api_key=settings.groq_api_key)
+    return await _transcribe_audio(file_content, file, client)
+
+
 async def process_audio_registration(
     file: UploadFile,
     usuario_id: uuid.UUID,
