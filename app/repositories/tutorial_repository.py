@@ -25,14 +25,14 @@ class TutorialRepository:
         return db.get(Tutorial, tutorial_id)
 
     def create(self, db: Session, payload: TutorialIn) -> Tutorial:
-        tutorial = Tutorial(**payload.model_dump())
+        tutorial = Tutorial(**payload.model_dump(mode="json"))
         db.add(tutorial)
         db.commit()
         db.refresh(tutorial)
         return tutorial
 
     def update(self, db: Session, tutorial: Tutorial, payload: TutorialUpdate) -> Tutorial:
-        for field, value in payload.model_dump(exclude_unset=True).items():
+        for field, value in payload.model_dump(mode="json", exclude_unset=True).items():
             setattr(tutorial, field, value)
 
         db.commit()

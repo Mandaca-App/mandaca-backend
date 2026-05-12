@@ -1,3 +1,5 @@
+from sqlalchemy import func, select
+
 from app.models.tutorial import CategoriaTutorial, Tutorial
 
 ADMIN_HEADERS = {"X-User-Type": "admin"}
@@ -29,6 +31,10 @@ def _create_tutorial(db, **overrides):
     db.commit()
     db.refresh(tutorial)
     return tutorial
+
+
+def _count_tutorials(db) -> int:
+    return db.scalar(select(func.count()).select_from(Tutorial))
 
 
 def test_given_active_tutorials_when_list_then_returns_ordered_and_ignores_inactive(client, db):
@@ -106,7 +112,10 @@ def test_given_valid_payload_when_admin_creates_then_returns_201(client, db):
     assert data["categoria"] == "cardapio"
     assert data["titulo"] == "Cadastrar item"
     assert data["ordem"] == 3
-    assert db.query(Tutorial).count() == 1
+    assert data["ativo"] is True
+    assert "created_at" in data
+    assert "updated_at" in data
+    assert _count_tutorials(db) == 1
 
 
 def test_given_invalid_url_when_admin_creates_then_returns_422_and_does_not_persist(client, db):
@@ -117,8 +126,7 @@ def test_given_invalid_url_when_admin_creates_then_returns_422_and_does_not_pers
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"] == "URL inválida"
-    assert db.query(Tutorial).count() == 0
+    assert _count_tutorials(db) == 0
 
 
 def test_given_non_admin_when_create_then_returns_403(client, db):
@@ -129,7 +137,7 @@ def test_given_non_admin_when_create_then_returns_403(client, db):
     )
 
     assert response.status_code == 403
-    assert db.query(Tutorial).count() == 0
+    assert _count_tutorials(db) == 0
 
 
 def test_given_existing_tutorial_when_admin_updates_order_then_list_reflects_new_order(client, db):

@@ -40,10 +40,7 @@ def create_tutorial(
     db: Session = Depends(get_db),
     service: TutorialService = Depends(get_tutorial_service),
 ) -> Tutorial:
-    try:
-        return service.create(db, payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+    return service.create(db, payload)
 
 
 @router.put(
@@ -57,11 +54,7 @@ def update_tutorial(
     db: Session = Depends(get_db),
     service: TutorialService = Depends(get_tutorial_service),
 ) -> Tutorial:
-    try:
-        tutorial = service.update(db, tutorial_id, payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
-
+    tutorial = service.update(db, tutorial_id, payload)
     if tutorial is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
