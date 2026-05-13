@@ -21,6 +21,7 @@ from app.core.exceptions import (
     ChatServiceConnectionError,
     ChatServiceError,
     ChatServiceTimeoutError,
+    ContactNotFoundError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     FieldNotAllowedError,
@@ -39,6 +40,7 @@ from app.routers import (
     auto_apply,
     business_context,
     chat,
+    contacts,
     enterprises,
     menus,
     notifications,
@@ -63,6 +65,7 @@ app.include_router(business_context.router)
 app.include_router(reports.router)
 app.include_router(auto_apply.router)
 app.include_router(tutoriais.router)
+app.include_router(contacts.router)
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +73,7 @@ app.include_router(tutoriais.router)
 # ---------------------------------------------------------------------------
 
 _NOT_FOUND_TYPES = (
+    ContactNotFoundError,
     EnterpriseNotFoundError,
     UserNotFoundError,
     AIReportNotFoundError,
