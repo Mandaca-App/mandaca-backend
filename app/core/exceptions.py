@@ -206,14 +206,3 @@ class InvalidFieldValueError(MandacaError):
 class AutoApplyPersistenceError(MandacaError):
     def __init__(self) -> None:
         super().__init__("Falha ao aplicar alteração no banco de dados.")
-
-
-# ---------------------------------------------------------------------------
-# Exceções de Contato (contact_service)
-# ---------------------------------------------------------------------------
-
-
-class ContactNotFoundError(MandacaError):
-    def __init__(self, contact_id: UUID | str) -> None:
-        super().__init__(f"Contato não encontrado: {contact_id}")
-        self.contact_id = contact_id
