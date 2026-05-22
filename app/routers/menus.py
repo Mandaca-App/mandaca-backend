@@ -1,6 +1,7 @@
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.orm import Session
 
 import app.services.menu_service as menu_service
@@ -33,19 +34,21 @@ def get_menu(
 
 @router.post("/", response_model=MenuResponse, status_code=status.HTTP_201_CREATED)
 def create_menu(
-    payload: MenuCreate,
+    payload: MenuCreate = Depends(),
+    foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ) -> MenuResponse:
-    return menu_service.create(payload, db)
+    return menu_service.create(payload, foto, db)
 
 
 @router.put("/{menu_id}", response_model=MenuResponse)
 def update_menu(
     menu_id: UUID,
-    payload: MenuUpdate,
+    payload: MenuUpdate = Depends(),
+    foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ) -> MenuResponse:
-    return menu_service.update(menu_id, payload, db)
+    return menu_service.update(menu_id, payload, foto, db)
 
 
 @router.delete("/{menu_id}", status_code=status.HTTP_204_NO_CONTENT)
