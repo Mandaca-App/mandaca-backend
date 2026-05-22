@@ -2,7 +2,7 @@ import enum
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, Enum, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,6 +30,7 @@ class Menu(Base):
         Enum(CategoriaCardapio, name="categoria_cardapio_enum"), nullable=False
     )
     status: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    url_foto_item: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     empresa_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
