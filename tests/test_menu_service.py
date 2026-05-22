@@ -44,6 +44,7 @@ def _make_menu(**kwargs) -> Menu:
         categoria=kwargs.get("categoria", FAKE_CATEGORIA),
         status=kwargs.get("status", True),
         empresa_id=kwargs.get("empresa_id", FAKE_ENTERPRISE_ID),
+        url_foto_item=kwargs.get("url_foto_item", None),
     )
 
 
@@ -181,7 +182,7 @@ def test_given_valid_payload_when_create_then_persists_menu():
         empresa_id=FAKE_ENTERPRISE_ID,
     )
 
-    menu_service.create(payload, db)
+    menu_service.create(payload, foto=None, db=db)
 
     db.add.assert_called_once()
     db.commit.assert_called_once()
@@ -205,7 +206,7 @@ def test_given_valid_payload_with_all_fields_when_create_then_persists_all():
         empresa_id=FAKE_ENTERPRISE_ID,
     )
 
-    menu_service.create(payload, db)
+    menu_service.create(payload, foto=None, db=db)
 
     added: Menu = db.add.call_args[0][0]
     assert added.historia == "Receita da vovó transmitida por gerações."
@@ -224,7 +225,7 @@ def test_given_missing_enterprise_when_create_then_raises_enterprise_not_found()
     )
 
     with pytest.raises(EnterpriseNotFoundError):
-        menu_service.create(payload, db)
+        menu_service.create(payload, foto=None, db=db)
 
 
 def test_given_missing_enterprise_when_create_then_does_not_persist():
@@ -239,7 +240,7 @@ def test_given_missing_enterprise_when_create_then_does_not_persist():
     )
 
     with pytest.raises(EnterpriseNotFoundError):
-        menu_service.create(payload, db)
+        menu_service.create(payload, foto=None, db=db)
 
     db.add.assert_not_called()
     db.commit.assert_not_called()
@@ -256,7 +257,7 @@ def test_given_new_preco_when_update_then_persists_it():
     payload = MenuUpdate(preco=Decimal("39.90"))
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.update(FAKE_MENU_ID, payload, db)
+        menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
     assert menu.preco == Decimal("39.90")
     db.commit.assert_called_once()
@@ -268,7 +269,7 @@ def test_given_new_descricao_when_update_then_persists_it():
     payload = MenuUpdate(descricao="Novo nome do prato")
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.update(FAKE_MENU_ID, payload, db)
+        menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
     assert menu.descricao == "Novo nome do prato"
     db.commit.assert_called_once()
@@ -280,7 +281,7 @@ def test_given_new_historia_when_update_then_persists_it():
     payload = MenuUpdate(historia="Uma história deliciosa sobre este prato.")
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.update(FAKE_MENU_ID, payload, db)
+        menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
     assert menu.historia == "Uma história deliciosa sobre este prato."
     db.commit.assert_called_once()
@@ -292,7 +293,7 @@ def test_given_new_categoria_when_update_then_persists_it():
     payload = MenuUpdate(categoria=CategoriaCardapio.SOBREMESA)
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.update(FAKE_MENU_ID, payload, db)
+        menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
     assert menu.categoria == CategoriaCardapio.SOBREMESA
     db.commit.assert_called_once()
@@ -304,7 +305,7 @@ def test_given_status_false_in_payload_when_update_then_persists_status():
     payload = MenuUpdate(status=False)
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.update(FAKE_MENU_ID, payload, db)
+        menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
     assert menu.status is False
     db.commit.assert_called_once()
@@ -318,7 +319,7 @@ def test_given_new_empresa_id_when_update_and_enterprise_exists_then_updates_it(
     payload = MenuUpdate(empresa_id=FAKE_OTHER_ENTERPRISE_ID)
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.update(FAKE_MENU_ID, payload, db)
+        menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
     assert menu.empresa_id == FAKE_OTHER_ENTERPRISE_ID
     db.commit.assert_called_once()
@@ -332,7 +333,7 @@ def test_given_new_empresa_id_when_update_and_enterprise_missing_then_raises():
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
         with pytest.raises(EnterpriseNotFoundError):
-            menu_service.update(FAKE_MENU_ID, payload, db)
+            menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
 
 def test_given_same_empresa_id_when_update_then_skips_enterprise_lookup():
@@ -341,7 +342,7 @@ def test_given_same_empresa_id_when_update_then_skips_enterprise_lookup():
     payload = MenuUpdate(empresa_id=FAKE_ENTERPRISE_ID)
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.update(FAKE_MENU_ID, payload, db)
+        menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
     db.get.assert_not_called()
     db.commit.assert_called_once()
@@ -356,7 +357,7 @@ def test_given_missing_menu_when_update_then_raises_domain_error():
         side_effect=MenuNotFoundError(FAKE_MENU_ID),
     ):
         with pytest.raises(MenuNotFoundError):
-            menu_service.update(FAKE_MENU_ID, payload, db)
+            menu_service.update(FAKE_MENU_ID, payload, foto=None, db=db)
 
 
 # ---------------------------------------------------------------------------
@@ -407,3 +408,76 @@ def test_given_active_menu_when_delete_then_does_not_remove_from_db():
         menu_service.delete(FAKE_MENU_ID, db)
 
     db.delete.assert_not_called()
+
+
+def test_given_foto_when_create_and_upload_succeeds_then_sets_url():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.get.return_value = enterprise
+    payload = MenuCreate(
+        descricao="Prato com foto",
+        preco=Decimal("29.90"),
+        categoria=CategoriaCardapio.PRATO_PRINCIPAL,
+        status=True,
+        empresa_id=FAKE_ENTERPRISE_ID,
+    )
+    foto = MagicMock()
+    foto.content_type = "image/jpeg"
+    foto.filename = "prato.jpg"
+    foto.file.read.return_value = b"fakebytes"
+
+    fake_url = "https://mock-url.com/object/public/mandaca-bucket/cardapios/x.jpg"
+
+    with patch("app.services.menu_service.supabase") as mock_supabase:
+        mock_supabase.storage.from_().upload.return_value = {}
+        mock_supabase.storage.from_().get_public_url.return_value = fake_url
+        menu_service.create(payload, foto=foto, db=db)
+
+    added: Menu = db.add.call_args[0][0]
+    assert added.url_foto_item == fake_url
+
+
+def test_given_foto_when_create_and_upload_fails_then_url_is_none():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.get.return_value = enterprise
+    payload = MenuCreate(
+        descricao="Prato com foto",
+        preco=Decimal("29.90"),
+        categoria=CategoriaCardapio.PRATO_PRINCIPAL,
+        status=True,
+        empresa_id=FAKE_ENTERPRISE_ID,
+    )
+    foto = MagicMock()
+    foto.content_type = "image/jpeg"
+    foto.filename = "prato.jpg"
+    foto.file.read.return_value = b"fakebytes"
+
+    with patch("app.services.menu_service.supabase") as mock_supabase:
+        mock_supabase.storage.from_().upload.side_effect = Exception("Storage error")
+        menu_service.create(payload, foto=foto, db=db)
+
+    added: Menu = db.add.call_args[0][0]
+    assert added.url_foto_item is None
+
+
+def test_given_foto_when_update_then_removes_old_and_sets_new_url():
+    db = _mock_db()
+    old_url = "https://mock-url.com/object/public/mandaca-bucket/cardapios/old.jpg"
+    menu = _make_menu(url_foto_item=old_url)
+    new_url = "https://mock-url.com/object/public/mandaca-bucket/cardapios/new.jpg"
+    payload = MenuUpdate()
+
+    foto = MagicMock()
+    foto.content_type = "image/jpeg"
+    foto.filename = "novo.jpg"
+    foto.file.read.return_value = b"fakebytes"
+
+    with patch("app.services.menu_service.get_by_id", return_value=menu):
+        with patch("app.services.menu_service.supabase") as mock_supabase:
+            mock_supabase.storage.from_().upload.return_value = {}
+            mock_supabase.storage.from_().get_public_url.return_value = new_url
+            menu_service.update(FAKE_MENU_ID, payload, foto=foto, db=db)
+
+    mock_supabase.storage.from_().remove.assert_called_once_with(["cardapios/old.jpg"])
+    assert menu.url_foto_item == new_url
