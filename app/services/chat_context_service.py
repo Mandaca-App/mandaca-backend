@@ -7,6 +7,7 @@ from app.models.assessment import Assessment, TipoAvaliacao
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
 from app.models.user import User
+from app.services.prompts.consultor_persona import EnterpriseContext
 
 _MAX_ASSESSMENTS = 5
 
@@ -60,6 +61,23 @@ class ChatContextService:
         parts.append("===================================")
         return "\n".join(parts)
 
+    def build_enterprise_context(
+        self,
+        empresa_id: uuid.UUID,
+        db: Session,
+    ) -> EnterpriseContext | None:
+        empresa = db.get(Enterprise, empresa_id)
+        if not empresa or empresa.deleted_at is not None:
+            return None
+
+        city, state = self._extract_city_state(empresa.endereco)
+        return EnterpriseContext(
+            enterprise_name=empresa.nome,
+            category=empresa.especialidade,
+            city=city,
+            state=state,
+        )
+
     def _fetch_assessments(self, empresa_id: uuid.UUID, db: Session) -> list[Assessment]:
         # Assessment nao possui criado_em; LIMIT sem ORDER BY retorna registros arbitrarios.
         # Para garantir "mais recentes", adicionar criado_em ao modelo numa migration futura.
@@ -72,3 +90,17 @@ class ChatContextService:
             Menu.status.is_(True),
         )
         return list(db.scalars(stmt).all())
+
+    def _extract_city_state(self, endereco: str | None) -> tuple[str | None, str | None]:
+        if not endereco:
+            return None, None
+
+        parts = [part.strip() for part in endereco.replace("-", ",").split(",") if part.strip()]
+        if len(parts) < 2:
+            return None, None
+
+        state = parts[-1].upper()
+        city = parts[-2]
+        if len(state) != 2:
+            return city, None
+        return city, state

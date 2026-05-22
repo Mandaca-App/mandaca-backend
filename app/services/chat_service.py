@@ -15,21 +15,13 @@ from app.core.exceptions import (
 )
 from app.models.chat_message import ChatMessage
 from app.services.chat_context_service import ChatContextService
+from app.services.prompts.consultor_persona import build_system_prompt
 
 logger = logging.getLogger(__name__)
 
 _CHAT_MODEL = "llama-3.3-70b-versatile"
 _MAX_TOKENS = 1024
 _TEMPERATURE = 0.7
-
-_SYSTEM_PROMPT = """
-Você é Mandaca, uma consultora de negócios especializada em apoiar
-microempreendedores do interior de Pernambuco. Conhece profundamente a
-cultura, os desafios e oportunidades do sertão e agreste nordestino.
-Responda de forma clara, acolhedora e prática, usando linguagem acessível.
-Foque em orientações sobre gestão, vendas, finanças pessoais e formalização
-de pequenos negócios.
-"""
 
 
 class ChatService:
@@ -48,8 +40,12 @@ class ChatService:
         user_id: uuid.UUID,
         db: Session,
     ) -> str:
+        enterprise_context = self._context_service.build_enterprise_context(enterprise_id, db)
         context = self._context_service.build_context(enterprise_id, db, user_id)
-        system_content = _SYSTEM_PROMPT + ("\n\n" + context if context else "")
+        system_content = build_system_prompt(enterprise_context)
+        if context:
+            system_content = f"{system_content}\n\n{context}"
+
         try:
             response = await self._client.chat.completions.create(
                 model=_CHAT_MODEL,

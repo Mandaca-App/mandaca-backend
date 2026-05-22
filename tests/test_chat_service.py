@@ -12,6 +12,7 @@ from app.core.exceptions import (
 )
 from app.services.chat_context_service import ChatContextService
 from app.services.chat_service import _CHAT_MODEL, ChatService
+from app.services.prompts.consultor_persona import EnterpriseContext
 
 FAKE_REPLY = "Para melhorar suas vendas, comece identificando seu público-alvo."
 FAKE_ENTERPRISE_ID = uuid.uuid4()
@@ -36,6 +37,7 @@ def _mock_db() -> MagicMock:
 def _mock_context_service(context: str = "") -> MagicMock:
     svc = MagicMock(spec=ChatContextService)
     svc.build_context.return_value = context
+    svc.build_enterprise_context.return_value = None
     return svc
 
 
@@ -90,6 +92,7 @@ async def test_given_valid_message_when_sent_then_includes_system_prompt():
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
     messages = call_kwargs["messages"]
     assert messages[0]["role"] == "system"
+    assert "Consultor Mandaca" in messages[0]["content"]
     assert messages[1]["role"] == "user"
 
 
@@ -210,6 +213,31 @@ async def test_given_context_available_when_message_sent_then_context_injected_i
 
 
 @pytest.mark.anyio
+async def test_given_enterprise_context_when_message_sent_then_persona_prompt_is_personalized():
+    # GIVEN
+    enterprise_context = EnterpriseContext(
+        enterprise_name="Pousada Raiz",
+        category="hospedagem",
+        city="Triunfo",
+        state="PE",
+    )
+    context_service = _mock_context_service()
+    context_service.build_enterprise_context.return_value = enterprise_context
+    mock_client = _mock_groq_client()
+    service = ChatService(groq_client=mock_client, context_service=context_service)
+    db = _mock_db()
+
+    # WHEN
+    await service.send_message("Como melhorar meu perfil?", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
+
+    # THEN
+    system_content = mock_client.chat.completions.create.call_args.kwargs["messages"][0]["content"]
+    assert "Pousada Raiz" in system_content
+    assert "Triunfo" in system_content
+    assert "Consultor Mandaca" in system_content
+
+
+@pytest.mark.anyio
 async def test_given_empty_context_when_message_sent_then_system_prompt_unchanged():
     # GIVEN
     mock_client = _mock_groq_client()
@@ -223,6 +251,7 @@ async def test_given_empty_context_when_message_sent_then_system_prompt_unchange
     call_kwargs = mock_client.chat.completions.create.call_args.kwargs
     system_content = call_kwargs["messages"][0]["content"]
     assert "===" not in system_content
+    assert "nenhum contexto estruturado" in system_content
 
 
 # ---------------------------------------------------------------------------
@@ -241,4 +270,5 @@ async def test_given_user_id_when_send_message_then_passes_to_context_service():
     await service.send_message("oi", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
 
     # THEN
+    context_service.build_enterprise_context.assert_called_once_with(FAKE_ENTERPRISE_ID, db)
     context_service.build_context.assert_called_once_with(FAKE_ENTERPRISE_ID, db, FAKE_USER_ID)
