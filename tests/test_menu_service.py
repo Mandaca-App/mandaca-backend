@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import EnterpriseNotFoundError, MenuNotFoundError
+from app.core.exceptions import EnterpriseNotFoundError, InvalidImageTypeError, MenuNotFoundError
 from app.models.enterprise import Enterprise
 from app.models.menu import CategoriaCardapio, Menu
 from app.schemas.menus import MenuCreate, MenuUpdate
@@ -481,3 +481,40 @@ def test_given_foto_when_update_then_removes_old_and_sets_new_url():
 
     mock_supabase.storage.from_().remove.assert_called_once_with(["cardapios/old.jpg"])
     assert menu.url_foto_item == new_url
+
+
+def test_given_invalid_file_type_when_create_then_raises_invalid_image_type():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.get.return_value = enterprise
+    payload = MenuCreate(
+        descricao="Prato teste",
+        preco=Decimal("20.00"),
+        categoria=CategoriaCardapio.PRATO_PRINCIPAL,
+        status=True,
+        empresa_id=FAKE_ENTERPRISE_ID,
+    )
+    foto = MagicMock()
+    foto.content_type = "application/pdf"
+    foto.filename = "documento.pdf"
+
+    with pytest.raises(InvalidImageTypeError):
+        menu_service.create(payload, foto=foto, db=db)
+
+    db.add.assert_not_called()
+
+
+def test_given_invalid_file_type_when_update_then_raises_invalid_image_type():
+    db = _mock_db()
+    menu = _make_menu()
+    payload = MenuUpdate()
+
+    foto = MagicMock()
+    foto.content_type = "application/pdf"
+    foto.filename = "documento.pdf"
+
+    with patch("app.services.menu_service.get_by_id", return_value=menu):
+        with pytest.raises(InvalidImageTypeError):
+            menu_service.update(FAKE_MENU_ID, payload, foto=foto, db=db)
+
+    db.commit.assert_not_called()
