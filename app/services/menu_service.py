@@ -1,11 +1,11 @@
 from typing import Optional
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import EnterpriseNotFoundError, MenuNotFoundError
+from app.core.exceptions import EnterpriseNotFoundError, InvalidImageTypeError, MenuNotFoundError
 from app.core.supabase_client import supabase
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
@@ -20,6 +20,21 @@ def _extract_storage_path(public_url: str) -> Optional[str]:
         return public_url[idx + len(marker) :]
     except (ValueError, AttributeError):
         return None
+
+
+def _upload_photo(foto: UploadFile) -> str:
+    """Faz upload de uma foto para o Supabase Storage e retorna a URL pública."""
+    if not foto.content_type or not foto.content_type.startswith("image/"):
+        raise InvalidImageTypeError()
+    file_ext = foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
+    storage_path = f"cardapios/{uuid4()}.{file_ext}"
+    file_content = foto.file.read()
+    supabase.storage.from_("mandaca-bucket").upload(
+        file=file_content,
+        path=storage_path,
+        file_options={"content-type": foto.content_type, "upsert": "false"},
+    )
+    return supabase.storage.from_("mandaca-bucket").get_public_url(storage_path)
 
 
 def get_by_enterprise(enterprise_id: UUID, db: Session) -> list[Menu]:
@@ -68,23 +83,10 @@ def create(payload: MenuCreate, foto: Optional[UploadFile], db: Session) -> Menu
 
     url_foto_item = None
     if foto is not None:
-        if not foto.content_type or not foto.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400,
-                detail="O arquivo enviado não é uma imagem válida",
-            )
         try:
-            file_ext = (
-                foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
-            )
-            storage_path = f"cardapios/{uuid4()}.{file_ext}"
-            file_content = foto.file.read()
-            supabase.storage.from_("mandaca-bucket").upload(
-                file=file_content,
-                path=storage_path,
-                file_options={"content-type": foto.content_type, "upsert": "false"},
-            )
-            url_foto_item = supabase.storage.from_("mandaca-bucket").get_public_url(storage_path)
+            url_foto_item = _upload_photo(foto)
+        except InvalidImageTypeError:
+            raise
         except Exception:
             url_foto_item = None
 
@@ -126,29 +128,18 @@ def update(menu_id: UUID, payload: MenuUpdate, foto: Optional[UploadFile], db: S
         menu.status = payload.status
 
     if foto is not None:
-        if not foto.content_type or not foto.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400,
-                detail="O arquivo enviado não é uma imagem válida",
-            )
         try:
-            file_ext = (
-                foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
-            )
-            new_storage_path = f"cardapios/{uuid4()}.{file_ext}"
-            file_content = foto.file.read()
-            supabase.storage.from_("mandaca-bucket").upload(
-                file=file_content,
-                path=new_storage_path,
-                file_options={"content-type": foto.content_type, "upsert": "false"},
-            )
+            new_url = _upload_photo(foto)
             if menu.url_foto_item:
                 old_path = _extract_storage_path(menu.url_foto_item)
                 if old_path:
-                    supabase.storage.from_("mandaca-bucket").remove([old_path])
-            menu.url_foto_item = supabase.storage.from_("mandaca-bucket").get_public_url(
-                new_storage_path
-            )
+                    try:
+                        supabase.storage.from_("mandaca-bucket").remove([old_path])
+                    except Exception:
+                        pass
+            menu.url_foto_item = new_url
+        except InvalidImageTypeError:
+            raise
         except Exception:
             pass
 

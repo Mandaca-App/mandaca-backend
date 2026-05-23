@@ -126,6 +126,11 @@ class MenuNotFoundError(MandacaError):
         self.menu_id = menu_id
 
 
+class InvalidImageTypeError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("O arquivo enviado não é uma imagem válida.")
+
+
 # ---------------------------------------------------------------------------
 # Exceções de Avaliações (assessment_service)
 # ---------------------------------------------------------------------------

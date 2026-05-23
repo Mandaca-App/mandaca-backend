@@ -1,10 +1,11 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 import app.services.menu_service as menu_service
+from app.core.exceptions import InvalidImageTypeError
 from app.core.session import get_db
 from app.schemas.menus import MenuCreate, MenuResponse, MenuUpdate
 
@@ -38,7 +39,10 @@ def create_menu(
     foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ) -> MenuResponse:
-    return menu_service.create(payload, foto, db)
+    try:
+        return menu_service.create(payload, foto=foto, db=db)
+    except InvalidImageTypeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.put("/{menu_id}", response_model=MenuResponse)
@@ -48,7 +52,10 @@ def update_menu(
     foto: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
 ) -> MenuResponse:
-    return menu_service.update(menu_id, payload, foto, db)
+    try:
+        return menu_service.update(menu_id, payload, foto=foto, db=db)
+    except InvalidImageTypeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.delete("/{menu_id}", status_code=status.HTTP_204_NO_CONTENT)
