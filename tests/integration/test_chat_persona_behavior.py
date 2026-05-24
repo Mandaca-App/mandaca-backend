@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.schemas.chat import EnterpriseContext
 from app.services.chat_context_service import ChatContextService
 from app.services.chat_service import ChatService
-from app.services.prompts.consultor_persona import EnterpriseContext
 
 FAKE_ENTERPRISE_ID = uuid.uuid4()
 FAKE_USER_ID = uuid.uuid4()

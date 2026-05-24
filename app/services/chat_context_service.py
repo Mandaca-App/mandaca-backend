@@ -7,7 +7,7 @@ from app.models.assessment import Assessment, TipoAvaliacao
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
 from app.models.user import User
-from app.services.prompts.consultor_persona import EnterpriseContext
+from app.schemas.chat import EnterpriseContext
 
 _MAX_ASSESSMENTS = 5
 
@@ -67,7 +67,7 @@ class ChatContextService:
         db: Session,
     ) -> EnterpriseContext | None:
         empresa = db.get(Enterprise, empresa_id)
-        if not empresa or empresa.deleted_at is not None:
+        if not empresa:
             return None
 
         city, state = self._extract_city_state(empresa.endereco)

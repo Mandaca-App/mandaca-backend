@@ -10,9 +10,9 @@ from app.core.exceptions import (
     ChatServiceError,
     ChatServiceTimeoutError,
 )
+from app.schemas.chat import EnterpriseContext
 from app.services.chat_context_service import ChatContextService
 from app.services.chat_service import _CHAT_MODEL, ChatService
-from app.services.prompts.consultor_persona import EnterpriseContext
 
 FAKE_REPLY = "Para melhorar suas vendas, comece identificando seu público-alvo."
 FAKE_ENTERPRISE_ID = uuid.uuid4()

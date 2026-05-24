@@ -1,13 +1,4 @@
-from pydantic import BaseModel, ConfigDict
-
-
-class EnterpriseContext(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    enterprise_name: str | None = None
-    category: str | None = None
-    city: str | None = None
-    state: str | None = None
+from app.schemas.chat import EnterpriseContext
 
 
 def build_system_prompt(enterprise_context: EnterpriseContext | None) -> str:
