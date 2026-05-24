@@ -1,12 +1,40 @@
-from uuid import UUID
+from typing import Optional
+from uuid import UUID, uuid4
 
+from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import EnterpriseNotFoundError, MenuNotFoundError
+from app.core.exceptions import EnterpriseNotFoundError, InvalidImageTypeError, MenuNotFoundError
+from app.core.supabase_client import supabase
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
 from app.schemas.menus import MenuCreate, MenuUpdate
+
+
+def _extract_storage_path(public_url: str) -> Optional[str]:
+    """Extrai o storage_path relativo ao bucket a partir da URL pública do Supabase."""
+    try:
+        marker = "/object/public/mandaca-bucket/"
+        idx = public_url.index(marker)
+        return public_url[idx + len(marker) :]
+    except (ValueError, AttributeError):
+        return None
+
+
+def _upload_photo(foto: UploadFile) -> str:
+    """Faz upload de uma foto para o Supabase Storage e retorna a URL pública."""
+    if not foto.content_type or not foto.content_type.startswith("image/"):
+        raise InvalidImageTypeError()
+    file_ext = foto.filename.split(".")[-1] if foto.filename and "." in foto.filename else "jpg"
+    storage_path = f"cardapios/{uuid4()}.{file_ext}"
+    file_content = foto.file.read()
+    supabase.storage.from_("mandaca-bucket").upload(
+        file=file_content,
+        path=storage_path,
+        file_options={"content-type": foto.content_type, "upsert": "false"},
+    )
+    return supabase.storage.from_("mandaca-bucket").get_public_url(storage_path)
 
 
 def get_by_enterprise(enterprise_id: UUID, db: Session) -> list[Menu]:
@@ -47,19 +75,29 @@ def list_all(db: Session) -> list[Menu]:
     return list(db.execute(select(Menu).where(Menu.status.is_(True))).scalars().all())
 
 
-def create(payload: MenuCreate, db: Session) -> Menu:
+def create(payload: MenuCreate, foto: Optional[UploadFile], db: Session) -> Menu:
     """Cria um novo cardápio validando a empresa vinculada."""
     enterprise = db.get(Enterprise, payload.empresa_id)
     if not enterprise:
         raise EnterpriseNotFoundError(payload.empresa_id)
+
+    url_foto_item = None
+    if foto is not None:
+        try:
+            url_foto_item = _upload_photo(foto)
+        except InvalidImageTypeError:
+            raise
+        except Exception:
+            url_foto_item = None
 
     menu = Menu(
         descricao=payload.descricao,
         historia=payload.historia,
         preco=payload.preco,
         categoria=payload.categoria,
-        status=True,
+        status=payload.status,
         empresa_id=payload.empresa_id,
+        url_foto_item=url_foto_item,
     )
 
     db.add(menu)
@@ -68,7 +106,7 @@ def create(payload: MenuCreate, db: Session) -> Menu:
     return menu
 
 
-def update(menu_id: UUID, payload: MenuUpdate, db: Session) -> Menu:
+def update(menu_id: UUID, payload: MenuUpdate, foto: Optional[UploadFile], db: Session) -> Menu:
     """Atualiza os campos de um cardápio."""
     menu = get_by_id(menu_id, db)
 
@@ -88,6 +126,22 @@ def update(menu_id: UUID, payload: MenuUpdate, db: Session) -> Menu:
         menu.categoria = payload.categoria
     if payload.status is not None:
         menu.status = payload.status
+
+    if foto is not None:
+        try:
+            new_url = _upload_photo(foto)
+            if menu.url_foto_item:
+                old_path = _extract_storage_path(menu.url_foto_item)
+                if old_path:
+                    try:
+                        supabase.storage.from_("mandaca-bucket").remove([old_path])
+                    except Exception:
+                        pass
+            menu.url_foto_item = new_url
+        except InvalidImageTypeError:
+            raise
+        except Exception:
+            pass
 
     db.commit()
     db.refresh(menu)
