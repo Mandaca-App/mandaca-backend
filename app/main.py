@@ -30,6 +30,7 @@ from app.core.exceptions import (
     InvalidFieldValueError,
     MandacaError,
     MenuNotFoundError,
+    MenuPageEmptyError,
     UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
@@ -156,6 +157,7 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(ChatServiceTimeoutError, _handle_504)
     fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404)
     fastapi_app.add_exception_handler(AssessmentPageEmptyError, _handle_404)
+    fastapi_app.add_exception_handler(MenuPageEmptyError, _handle_404)
     fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
     fastapi_app.add_exception_handler(FieldNotAllowedError, _handle_422)
     fastapi_app.add_exception_handler(InvalidFieldValueError, _handle_422)
