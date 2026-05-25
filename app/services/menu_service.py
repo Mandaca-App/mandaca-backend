@@ -54,7 +54,6 @@ def get_by_enterprise(enterprise_id: UUID, db: Session) -> list[Menu]:
         db.execute(
             select(Menu).where(
                 Menu.empresa_id == enterprise_id,
-                Menu.status.is_(True),
             )
         )
         .scalars()
@@ -78,8 +77,9 @@ def get_by_id(menu_id: UUID, db: Session) -> Menu:
 
 
 def list_all(db: Session) -> list[Menu]:
-    """Retorna todos os cardápios ativos."""
-    return list(db.execute(select(Menu).where(Menu.status.is_(True))).scalars().all())
+    """Retorna todos os cardápios."""
+    stmt = select(Menu).order_by(Menu.descricao.asc())
+    return list(db.scalars(stmt).all())
 
 
 def create(payload: MenuCreate, foto: Optional[UploadFile], db: Session) -> Menu:
@@ -165,7 +165,7 @@ def delete(menu_id: UUID, db: Session) -> None:
 def list_by_enterprise_paginated(
     empresa_id: UUID,
     page: int,
-    categoria: Optional[CategoriaCardapio],  # era: busca: Optional[str]
+    categoria: Optional[CategoriaCardapio],
     db: Session,
 ) -> MenuPaginatedResponse:
     enterprise = db.get(Enterprise, empresa_id)
@@ -176,11 +176,10 @@ def list_by_enterprise_paginated(
 
     stmt = select(Menu).where(
         Menu.empresa_id == empresa_id,
-        Menu.status.is_(True),
     )
 
     if categoria is not None:
-        stmt = stmt.where(Menu.categoria == categoria)  # era: ilike por texto
+        stmt = stmt.where(Menu.categoria == categoria)
 
     stmt = stmt.order_by(Menu.descricao.asc()).offset(offset).limit(_PAGE_SIZE + 1)
 
@@ -191,8 +190,8 @@ def list_by_enterprise_paginated(
 
     has_more = len(rows) > _PAGE_SIZE
 
-    return {
-        "page": page,
-        "items": rows[:_PAGE_SIZE],
-        "has_more": has_more,
-    }
+    return MenuPaginatedResponse(
+        page=page,
+        items=rows[:_PAGE_SIZE],
+        has_more=has_more,
+    )
