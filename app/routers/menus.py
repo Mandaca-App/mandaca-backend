@@ -1,15 +1,32 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 import app.services.menu_service as menu_service
 from app.core.exceptions import InvalidImageTypeError
 from app.core.session import get_db
-from app.schemas.menus import MenuCreate, MenuResponse, MenuUpdate
+from app.models.menu import CategoriaCardapio
+from app.schemas.menus import MenuCreate, MenuPaginatedResponse, MenuResponse, MenuUpdate
 
 router = APIRouter(prefix="/menus", tags=["menus"])
+
+
+@router.get(
+    "/by-enterprise/{empresa_id}/paginated",
+    response_model=MenuPaginatedResponse,
+    status_code=status.HTTP_200_OK,
+)
+def list_menus_by_enterprise_paginated(
+    empresa_id: UUID,
+    page: int = Query(1, ge=1, description="Número da página (começa em 1)"),
+    categoria: Optional[CategoriaCardapio] = Query(
+        None, description="Filtro por categoria do item"
+    ),
+    db: Session = Depends(get_db),
+) -> MenuPaginatedResponse:
+    return menu_service.list_by_enterprise_paginated(empresa_id, page, categoria, db)
 
 
 @router.get("/by-enterprise/{enterprise_id}", response_model=list[MenuResponse])

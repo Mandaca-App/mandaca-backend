@@ -36,3 +36,11 @@ class MenuResponse(BaseModel):
     status: bool
     empresa_id: UUID
     url_foto_item: Optional[str] = None
+
+
+class MenuPaginatedResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    page: int
+    items: list[MenuResponse]
+    has_more: bool
