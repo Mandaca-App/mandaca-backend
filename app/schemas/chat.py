@@ -5,6 +5,15 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 
+class EnterpriseContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enterprise_name: str | None = None
+    category: str | None = None
+    city: str | None = None
+    state: str | None = None
+
+
 class ChatMessageCreate(BaseModel):
     empresa_id: UUID
     usuario_id: UUID
