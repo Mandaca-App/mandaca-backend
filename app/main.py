@@ -17,11 +17,13 @@ from app.core.exceptions import (
     AudioTranscriptionError,
     AutoApplyPersistenceError,
     BusinessContextNotFoundError,
+    ChatbotNotFoundError,
     ChatRateLimitError,
     ChatServiceConnectionError,
     ChatServiceError,
     ChatServiceTimeoutError,
     ContactNotFoundError,
+    DuplicateChatbotTypeError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     FieldNotAllowedError,
@@ -41,6 +43,7 @@ from app.routers import (
     auto_apply,
     business_context,
     chat,
+    chatbots,
     contacts,
     enterprises,
     menus,
@@ -61,6 +64,7 @@ app.include_router(notifications.router)
 app.include_router(transcriptions.router)
 app.include_router(assessments.router)
 app.include_router(chat.router)
+app.include_router(chatbots.router)
 app.include_router(menus.router)
 app.include_router(business_context.router)
 app.include_router(reports.router)
@@ -79,9 +83,11 @@ _NOT_FOUND_TYPES = (
     UserNotFoundError,
     AIReportNotFoundError,
     AssessmentNotFoundError,
+    ChatbotNotFoundError,
     MenuNotFoundError,
 )
 _BAD_REQUEST_TYPES = (
+    DuplicateChatbotTypeError,
     DuplicateEnterpriseNameError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,

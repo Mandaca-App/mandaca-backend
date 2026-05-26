@@ -1,6 +1,8 @@
 from app.models.assessment import Assessment as Assessment
 from app.models.business_context import BusinessContext as BusinessContext
 from app.models.chat_message import ChatMessage as ChatMessage
+from app.models.chatbot import Chatbot as Chatbot
+from app.models.chatbot import ChatbotKnowledgeModule as ChatbotKnowledgeModule
 from app.models.enterprise import Enterprise as Enterprise
 from app.models.menu import Menu as Menu
 from app.models.notification import Notification as Notification
