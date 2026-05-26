@@ -20,7 +20,7 @@ from app.core.exceptions import (
 )
 from app.models.enterprise import Enterprise
 from app.models.menu import CategoriaCardapio, Menu
-from app.schemas.menus import MenuCreate, MenuUpdate
+from app.schemas.menus import MenuBulkCreate, MenuBulkCreateItem, MenuCreate, MenuUpdate
 from app.services import menu_service
 
 # ---------------------------------------------------------------------------
@@ -629,3 +629,107 @@ def test_given_missing_enterprise_when_paginated_then_raises_enterprise_not_foun
 
     with pytest.raises(EnterpriseNotFoundError):
         menu_service.list_by_enterprise_paginated(FAKE_ENTERPRISE_ID, page=1, categoria=None, db=db)
+
+
+# ---------------------------------------------------------------------------
+# bulk_create
+# ---------------------------------------------------------------------------
+
+
+def test_given_valid_items_when_bulk_create_then_persists_all():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.get.return_value = enterprise
+    payload = MenuBulkCreate(
+        items=[
+            MenuBulkCreateItem(
+                descricao="Prato A",
+                preco=Decimal("20.00"),
+                categoria=CategoriaCardapio.PRATO_PRINCIPAL,
+                status=True,
+                empresa_id=FAKE_ENTERPRISE_ID,
+            ),
+            MenuBulkCreateItem(
+                descricao="Prato B",
+                preco=Decimal("15.00"),
+                categoria=CategoriaCardapio.ENTRADA,
+                status=True,
+                empresa_id=FAKE_ENTERPRISE_ID,
+            ),
+        ]
+    )
+
+    menu_service.bulk_create(payload, db)
+
+    db.add_all.assert_called_once()
+    added = db.add_all.call_args[0][0]
+    assert len(added) == 2
+    assert added[0].descricao == "Prato A"
+    assert added[1].descricao == "Prato B"
+    db.commit.assert_called_once()
+
+
+def test_given_item_without_url_foto_when_bulk_create_then_url_is_none():
+    db = _mock_db()
+    db.get.return_value = _make_enterprise()
+    payload = MenuBulkCreate(
+        items=[
+            MenuBulkCreateItem(
+                preco=Decimal("10.00"),
+                categoria=CategoriaCardapio.BEBIDA,
+                status=True,
+                empresa_id=FAKE_ENTERPRISE_ID,
+            )
+        ]
+    )
+
+    menu_service.bulk_create(payload, db)
+
+    added = db.add_all.call_args[0][0]
+    assert added[0].url_foto_item is None
+
+
+def test_given_missing_enterprise_when_bulk_create_then_raises_and_does_not_persist():
+    db = _mock_db()
+    db.get.return_value = None
+    payload = MenuBulkCreate(
+        items=[
+            MenuBulkCreateItem(
+                preco=Decimal("10.00"),
+                categoria=CategoriaCardapio.BEBIDA,
+                status=True,
+                empresa_id=FAKE_ENTERPRISE_ID,
+            )
+        ]
+    )
+
+    with pytest.raises(EnterpriseNotFoundError):
+        menu_service.bulk_create(payload, db)
+
+    db.add_all.assert_not_called()
+    db.commit.assert_not_called()
+
+
+def test_given_multiple_enterprises_when_bulk_create_then_validates_each_unique_id():
+    db = _mock_db()
+    db.get.return_value = _make_enterprise()
+    payload = MenuBulkCreate(
+        items=[
+            MenuBulkCreateItem(
+                preco=Decimal("10.00"),
+                categoria=CategoriaCardapio.BEBIDA,
+                status=True,
+                empresa_id=FAKE_ENTERPRISE_ID,
+            ),
+            MenuBulkCreateItem(
+                preco=Decimal("20.00"),
+                categoria=CategoriaCardapio.LANCHE,
+                status=True,
+                empresa_id=FAKE_OTHER_ENTERPRISE_ID,
+            ),
+        ]
+    )
+
+    menu_service.bulk_create(payload, db)
+
+    assert db.get.call_count == 2
