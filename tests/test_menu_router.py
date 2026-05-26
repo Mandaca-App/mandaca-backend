@@ -70,6 +70,8 @@ _PAGINATED_RESPONSE_WITH_MORE = {
     "has_more": True,
 }
 
+_BULK_RESPONSE = [_MENU_RESPONSE]
+
 
 @pytest.fixture
 def db_mock():
@@ -339,3 +341,53 @@ def test_given_has_more_true_when_paginated_then_reflects_in_response(db_mock):
 def test_given_page_zero_when_paginated_then_returns_422(db_mock):
     response = client.get(f"/menus/by-enterprise/{ENTERPRISE_ID}/paginated?page=0")
     assert response.status_code == 422
+
+
+def test_given_valid_bulk_payload_when_bulk_create_then_returns_201(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.bulk_create",
+        return_value=_BULK_RESPONSE,
+    ):
+        response = client.post(
+            "/menus/bulk",
+            json={
+                "items": [
+                    {
+                        "descricao": "Hambúrguer artesanal",
+                        "historia": "Receita da casa",
+                        "preco": "25.50",
+                        "categoria": "lanche",
+                        "status": True,
+                        "empresa_id": str(ENTERPRISE_ID),
+                    }
+                ]
+            },
+        )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["descricao"] == "Hambúrguer artesanal"
+
+
+def test_given_item_without_url_foto_when_bulk_create_then_url_is_null(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.bulk_create",
+        return_value=_BULK_RESPONSE,
+    ):
+        response = client.post(
+            "/menus/bulk",
+            json={
+                "items": [
+                    {
+                        "preco": "25.50",
+                        "categoria": "lanche",
+                        "status": True,
+                        "empresa_id": str(ENTERPRISE_ID),
+                    }
+                ]
+            },
+        )
+
+    assert response.status_code == 201
+    assert response.json()[0]["url_foto_item"] is None
