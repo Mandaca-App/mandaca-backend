@@ -133,7 +133,7 @@ def test_given_missing_enterprise_when_get_by_enterprise_then_raises_not_found()
 # ---------------------------------------------------------------------------
 
 
-def test_given_active_menu_when_get_by_id_then_returns_it():
+def test_given_existing_menu_when_get_by_id_then_returns_it():
     db = _mock_db()
     menu = _make_menu()
     db.execute.return_value.scalar_one_or_none.return_value = menu
@@ -141,6 +141,17 @@ def test_given_active_menu_when_get_by_id_then_returns_it():
     result = menu_service.get_by_id(FAKE_MENU_ID, db)
 
     assert result is menu
+
+
+def test_given_inactive_menu_when_get_by_id_then_returns_it():
+    db = _mock_db()
+    menu = _make_menu(status=False)
+    db.execute.return_value.scalar_one_or_none.return_value = menu
+
+    result = menu_service.get_by_id(FAKE_MENU_ID, db)
+
+    assert result is menu
+    assert result.status is False
 
 
 def test_given_missing_menu_when_get_by_id_then_raises_domain_error():
@@ -403,7 +414,7 @@ def test_given_missing_menu_when_delete_then_raises_domain_error():
     db.commit.assert_not_called()
 
 
-def test_given_already_inactive_menu_when_delete_then_raises_domain_error():
+def test_given_already_inactive_menu_when_delete_then_marks_status_false():
     db = _mock_db()
     menu = _make_menu(status=False)
 

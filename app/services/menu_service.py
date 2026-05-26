@@ -66,7 +66,6 @@ def get_by_id(menu_id: UUID, db: Session) -> Menu:
     menu = db.execute(
         select(Menu).where(
             Menu.id_cardapio == menu_id,
-            Menu.status.is_(True),
         )
     ).scalar_one_or_none()
 
