@@ -131,6 +131,12 @@ class InvalidImageTypeError(MandacaError):
         super().__init__("O arquivo enviado não é uma imagem válida.")
 
 
+class MenuPageEmptyError(MandacaError):
+    def __init__(self, page: int) -> None:
+        super().__init__(f"Não há mais itens de cardápio na página {page}.")
+        self.page = page
+
+
 # ---------------------------------------------------------------------------
 # Exceções de Avaliações (assessment_service)
 # ---------------------------------------------------------------------------

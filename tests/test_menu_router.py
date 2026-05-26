@@ -58,6 +58,18 @@ _MENU_RESPONSE_WITH_FOTO = SimpleNamespace(
 
 _MENUS_LIST = [_MENU_RESPONSE]
 
+_PAGINATED_RESPONSE = {
+    "page": 1,
+    "items": [_MENU_RESPONSE],
+    "has_more": False,
+}
+
+_PAGINATED_RESPONSE_WITH_MORE = {
+    "page": 1,
+    "items": [_MENU_RESPONSE],
+    "has_more": True,
+}
+
 
 @pytest.fixture
 def db_mock():
@@ -255,3 +267,75 @@ def test_given_update_with_foto_when_valid_image_then_returns_200(db_mock):
         )
 
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# list_menus_by_enterprise_paginated
+# ---------------------------------------------------------------------------
+
+
+def test_given_enterprise_exists_when_paginated_then_returns_200(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE,
+    ):
+        response = client.get(f"/menus/by-enterprise/{ENTERPRISE_ID}/paginated")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["page"] == 1
+    assert data["has_more"] is False
+    assert len(data["items"]) == 1
+    assert data["items"][0]["empresa_id"] == str(ENTERPRISE_ID)
+
+
+def test_given_page_param_when_paginated_then_passes_it_to_service(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE,
+    ) as mock_service:
+        client.get(f"/menus/by-enterprise/{ENTERPRISE_ID}/paginated?page=3")
+
+    mock_service.assert_called_once()
+    _, call_page, _, _ = mock_service.call_args[0]
+    assert call_page == 3
+
+
+def test_given_categoria_param_when_paginated_then_passes_it_to_service(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE,
+    ) as mock_service:
+        client.get(f"/menus/by-enterprise/{ENTERPRISE_ID}/paginated?categoria=lanche")
+
+    mock_service.assert_called_once()
+    _, _, call_categoria, _ = mock_service.call_args[0]
+    assert call_categoria == CategoriaCardapio.LANCHE
+
+
+def test_given_no_categoria_param_when_paginated_then_passes_none_to_service(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE,
+    ) as mock_service:
+        client.get(f"/menus/by-enterprise/{ENTERPRISE_ID}/paginated")
+
+    mock_service.assert_called_once()
+    _, _, call_categoria, _ = mock_service.call_args[0]
+    assert call_categoria is None
+
+
+def test_given_has_more_true_when_paginated_then_reflects_in_response(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.list_by_enterprise_paginated",
+        return_value=_PAGINATED_RESPONSE_WITH_MORE,
+    ):
+        response = client.get(f"/menus/by-enterprise/{ENTERPRISE_ID}/paginated")
+
+    assert response.status_code == 200
+    assert response.json()["has_more"] is True
+
+
+def test_given_page_zero_when_paginated_then_returns_422(db_mock):
+    response = client.get(f"/menus/by-enterprise/{ENTERPRISE_ID}/paginated?page=0")
+    assert response.status_code == 422

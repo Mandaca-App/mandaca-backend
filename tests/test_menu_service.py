@@ -12,7 +12,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import EnterpriseNotFoundError, InvalidImageTypeError, MenuNotFoundError
+from app.core.exceptions import (
+    EnterpriseNotFoundError,
+    InvalidImageTypeError,
+    MenuNotFoundError,
+    MenuPageEmptyError,
+)
 from app.models.enterprise import Enterprise
 from app.models.menu import CategoriaCardapio, Menu
 from app.schemas.menus import MenuCreate, MenuUpdate
@@ -29,6 +34,7 @@ FAKE_OTHER_ENTERPRISE_ID = uuid.uuid4()
 FAKE_PRECO = Decimal("25.90")
 FAKE_CATEGORIA = CategoriaCardapio.PRATO_PRINCIPAL
 
+_PAGE_SIZE = 10
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -72,10 +78,16 @@ def _make_enterprise(**kwargs) -> Enterprise:
 
 def _mock_db() -> MagicMock:
     db = MagicMock()
+
+    # Configura db.execute (usado por get_by_enterprise e get_by_id)
     execute_result = MagicMock()
     execute_result.scalars.return_value.all.return_value = []
     execute_result.scalar_one_or_none.return_value = None
     db.execute.return_value = execute_result
+
+    # Configura db.scalars (usado por list_all e list_by_enterprise_paginated)
+    db.scalars.return_value.all.return_value = []
+
     db.get.return_value = None
     return db
 
@@ -149,7 +161,8 @@ def test_given_missing_menu_when_get_by_id_then_raises_domain_error():
 def test_given_active_menus_when_list_all_then_returns_all():
     db = _mock_db()
     menus = [_make_menu(), _make_menu(id_cardapio=uuid.uuid4())]
-    db.execute.return_value.scalars.return_value.all.return_value = menus
+    # list_all usa db.scalars(stmt).all()
+    db.scalars.return_value.all.return_value = menus
 
     result = menu_service.list_all(db)
 
@@ -158,7 +171,8 @@ def test_given_active_menus_when_list_all_then_returns_all():
 
 def test_given_no_menus_when_list_all_then_returns_empty():
     db = _mock_db()
-    db.execute.return_value.scalars.return_value.all.return_value = []
+    # _mock_db já configura db.scalars.return_value.all.return_value = []
+    db.scalars.return_value.all.return_value = []
 
     result = menu_service.list_all(db)
 
@@ -518,3 +532,89 @@ def test_given_invalid_file_type_when_update_then_raises_invalid_image_type():
             menu_service.update(FAKE_MENU_ID, payload, foto=foto, db=db)
 
     db.commit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# list_by_enterprise_paginated
+# ---------------------------------------------------------------------------
+
+
+def test_given_existing_enterprise_when_paginated_then_returns_first_page():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    menus = [_make_menu(), _make_menu(id_cardapio=uuid.uuid4())]
+    db.get.return_value = enterprise
+    db.scalars.return_value.all.return_value = menus
+
+    result = menu_service.list_by_enterprise_paginated(
+        FAKE_ENTERPRISE_ID, page=1, categoria=None, db=db
+    )
+
+    assert result.page == 1
+    assert result.has_more is False
+    assert len(result.items) == 2
+
+
+def test_given_more_items_than_page_size_when_paginated_then_has_more_is_true():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    menus = [_make_menu(id_cardapio=uuid.uuid4()) for _ in range(_PAGE_SIZE + 1)]
+    db.get.return_value = enterprise
+    db.scalars.return_value.all.return_value = menus
+
+    result = menu_service.list_by_enterprise_paginated(
+        FAKE_ENTERPRISE_ID, page=1, categoria=None, db=db
+    )
+
+    assert result.has_more is True
+    assert len(result.items) == _PAGE_SIZE
+
+
+def test_given_categoria_filter_when_paginated_then_returns_only_matching():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    menus = [_make_menu(categoria=CategoriaCardapio.LANCHE)]
+    db.get.return_value = enterprise
+    db.scalars.return_value.all.return_value = menus
+
+    result = menu_service.list_by_enterprise_paginated(
+        FAKE_ENTERPRISE_ID, page=1, categoria=CategoriaCardapio.LANCHE, db=db
+    )
+
+    assert len(result.items) == 1
+    assert result.items[0].categoria == CategoriaCardapio.LANCHE
+
+
+def test_given_empty_page_beyond_first_when_paginated_then_raises_page_empty():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.get.return_value = enterprise
+    db.scalars.return_value.all.return_value = []
+
+    with pytest.raises(MenuPageEmptyError) as exc_info:
+        menu_service.list_by_enterprise_paginated(FAKE_ENTERPRISE_ID, page=2, categoria=None, db=db)
+
+    assert exc_info.value.page == 2
+
+
+def test_given_empty_first_page_when_paginated_then_returns_empty_without_raising():
+    db = _mock_db()
+    enterprise = _make_enterprise()
+    db.get.return_value = enterprise
+    db.scalars.return_value.all.return_value = []
+
+    result = menu_service.list_by_enterprise_paginated(
+        FAKE_ENTERPRISE_ID, page=1, categoria=None, db=db
+    )
+
+    assert result.page == 1
+    assert result.has_more is False
+    assert len(result.items) == 0
+
+
+def test_given_missing_enterprise_when_paginated_then_raises_enterprise_not_found():
+    db = _mock_db()
+    db.get.return_value = None
+
+    with pytest.raises(EnterpriseNotFoundError):
+        menu_service.list_by_enterprise_paginated(FAKE_ENTERPRISE_ID, page=1, categoria=None, db=db)

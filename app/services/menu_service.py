@@ -5,11 +5,18 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import EnterpriseNotFoundError, InvalidImageTypeError, MenuNotFoundError
+from app.core.exceptions import (
+    EnterpriseNotFoundError,
+    InvalidImageTypeError,
+    MenuNotFoundError,
+    MenuPageEmptyError,
+)
 from app.core.supabase_client import supabase
 from app.models.enterprise import Enterprise
-from app.models.menu import Menu
-from app.schemas.menus import MenuCreate, MenuUpdate
+from app.models.menu import CategoriaCardapio, Menu
+from app.schemas.menus import MenuCreate, MenuPaginatedResponse, MenuUpdate
+
+_PAGE_SIZE = 10
 
 
 def _extract_storage_path(public_url: str) -> Optional[str]:
@@ -47,7 +54,6 @@ def get_by_enterprise(enterprise_id: UUID, db: Session) -> list[Menu]:
         db.execute(
             select(Menu).where(
                 Menu.empresa_id == enterprise_id,
-                Menu.status.is_(True),
             )
         )
         .scalars()
@@ -71,8 +77,9 @@ def get_by_id(menu_id: UUID, db: Session) -> Menu:
 
 
 def list_all(db: Session) -> list[Menu]:
-    """Retorna todos os cardápios ativos."""
-    return list(db.execute(select(Menu).where(Menu.status.is_(True))).scalars().all())
+    """Retorna todos os cardápios."""
+    stmt = select(Menu).order_by(Menu.descricao.asc())
+    return list(db.scalars(stmt).all())
 
 
 def create(payload: MenuCreate, foto: Optional[UploadFile], db: Session) -> Menu:
@@ -153,3 +160,38 @@ def delete(menu_id: UUID, db: Session) -> None:
     menu = get_by_id(menu_id, db)
     menu.status = False
     db.commit()
+
+
+def list_by_enterprise_paginated(
+    empresa_id: UUID,
+    page: int,
+    categoria: Optional[CategoriaCardapio],
+    db: Session,
+) -> MenuPaginatedResponse:
+    enterprise = db.get(Enterprise, empresa_id)
+    if not enterprise:
+        raise EnterpriseNotFoundError(empresa_id)
+
+    offset = (page - 1) * _PAGE_SIZE
+
+    stmt = select(Menu).where(
+        Menu.empresa_id == empresa_id,
+    )
+
+    if categoria is not None:
+        stmt = stmt.where(Menu.categoria == categoria)
+
+    stmt = stmt.order_by(Menu.descricao.asc()).offset(offset).limit(_PAGE_SIZE + 1)
+
+    rows = list(db.scalars(stmt).all())
+
+    if not rows and page > 1:
+        raise MenuPageEmptyError(page)
+
+    has_more = len(rows) > _PAGE_SIZE
+
+    return MenuPaginatedResponse(
+        page=page,
+        items=rows[:_PAGE_SIZE],
+        has_more=has_more,
+    )
