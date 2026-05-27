@@ -155,9 +155,9 @@ def update(menu_id: UUID, payload: MenuUpdate, foto: Optional[UploadFile], db: S
 
 
 def delete(menu_id: UUID, db: Session) -> None:
-    """Remove logicamente um cardápio, marcando status como False."""
+    """Remove um cardápio pelo ID."""
     menu = get_by_id(menu_id, db)
-    menu.status = False
+    db.delete(menu)
     db.commit()
 
 

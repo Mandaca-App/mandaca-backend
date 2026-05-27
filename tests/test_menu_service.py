@@ -390,14 +390,14 @@ def test_given_missing_menu_when_update_then_raises_domain_error():
 # ---------------------------------------------------------------------------
 
 
-def test_given_active_menu_when_delete_then_marks_status_false():
+def test_given_existing_menu_when_delete_then_removes_from_db():
     db = _mock_db()
-    menu = _make_menu(status=True)
+    menu = _make_menu()
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
         menu_service.delete(FAKE_MENU_ID, db)
 
-    assert menu.status is False
+    db.delete.assert_called_once_with(menu)
     db.commit.assert_called_once()
 
 
@@ -414,25 +414,14 @@ def test_given_missing_menu_when_delete_then_raises_domain_error():
     db.commit.assert_not_called()
 
 
-def test_given_already_inactive_menu_when_delete_then_marks_status_false():
+def test_given_existing_menu_when_delete_then_calls_db_delete():
     db = _mock_db()
-    menu = _make_menu(status=False)
+    menu = _make_menu()
 
     with patch("app.services.menu_service.get_by_id", return_value=menu):
         menu_service.delete(FAKE_MENU_ID, db)
 
-    assert menu.status is False
-    db.commit.assert_called_once()
-
-
-def test_given_active_menu_when_delete_then_does_not_remove_from_db():
-    db = _mock_db()
-    menu = _make_menu(status=True)
-
-    with patch("app.services.menu_service.get_by_id", return_value=menu):
-        menu_service.delete(FAKE_MENU_ID, db)
-
-    db.delete.assert_not_called()
+    db.delete.assert_called_once_with(menu)
 
 
 def test_given_foto_when_create_and_upload_succeeds_then_sets_url():
