@@ -8,7 +8,13 @@ import app.services.menu_service as menu_service
 from app.core.exceptions import InvalidImageTypeError
 from app.core.session import get_db
 from app.models.menu import CategoriaCardapio
-from app.schemas.menus import MenuCreate, MenuPaginatedResponse, MenuResponse, MenuUpdate
+from app.schemas.menus import (
+    MenuBulkCreate,
+    MenuCreate,
+    MenuPaginatedResponse,
+    MenuResponse,
+    MenuUpdate,
+)
 
 router = APIRouter(prefix="/menus", tags=["menus"])
 
@@ -48,6 +54,14 @@ def get_menu(
     db: Session = Depends(get_db),
 ) -> MenuResponse:
     return menu_service.get_by_id(menu_id, db)
+
+
+@router.post("/bulk", response_model=list[MenuResponse], status_code=status.HTTP_201_CREATED)
+def bulk_create_menus(
+    payload: MenuBulkCreate,
+    db: Session = Depends(get_db),
+) -> list[MenuResponse]:
+    return menu_service.bulk_create(payload, db)
 
 
 @router.post("/", response_model=MenuResponse, status_code=status.HTTP_201_CREATED)
