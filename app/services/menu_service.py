@@ -14,7 +14,7 @@ from app.core.exceptions import (
 from app.core.supabase_client import supabase
 from app.models.enterprise import Enterprise
 from app.models.menu import CategoriaCardapio, Menu
-from app.schemas.menus import MenuCreate, MenuPaginatedResponse, MenuUpdate
+from app.schemas.menus import MenuBulkCreate, MenuCreate, MenuPaginatedResponse, MenuUpdate
 
 _PAGE_SIZE = 10
 
@@ -155,9 +155,9 @@ def update(menu_id: UUID, payload: MenuUpdate, foto: Optional[UploadFile], db: S
 
 
 def delete(menu_id: UUID, db: Session) -> None:
-    """Remove logicamente um cardápio, marcando status como False."""
+    """Remove um cardápio pelo ID."""
     menu = get_by_id(menu_id, db)
-    menu.status = False
+    db.delete(menu)
     db.commit()
 
 
@@ -194,3 +194,30 @@ def list_by_enterprise_paginated(
         items=rows[:_PAGE_SIZE],
         has_more=has_more,
     )
+
+
+def bulk_create(payload: MenuBulkCreate, db: Session) -> list[Menu]:
+    """Insere múltiplos itens em lote, validando todas as empresas antes de persistir."""
+    unique_enterprise_ids = {item.empresa_id for item in payload.items}
+    for enterprise_id in unique_enterprise_ids:
+        if not db.get(Enterprise, enterprise_id):
+            raise EnterpriseNotFoundError(enterprise_id)
+
+    menus = [
+        Menu(
+            descricao=item.descricao,
+            historia=item.historia,
+            preco=item.preco,
+            categoria=item.categoria,
+            status=item.status,
+            empresa_id=item.empresa_id,
+            url_foto_item=item.url_foto_item,
+        )
+        for item in payload.items
+    ]
+
+    db.add_all(menus)
+    db.commit()
+    for menu in menus:
+        db.refresh(menu)
+    return menus

@@ -44,3 +44,17 @@ class MenuPaginatedResponse(BaseModel):
     page: int
     items: list[MenuResponse]
     has_more: bool
+
+
+class MenuBulkCreateItem(BaseModel):
+    descricao: Annotated[Optional[str], StringConstraints(max_length=255)] = None
+    historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
+    preco: Decimal
+    categoria: CategoriaCardapio
+    status: bool
+    empresa_id: UUID
+    url_foto_item: Optional[str] = None
+
+
+class MenuBulkCreate(BaseModel):
+    items: list[MenuBulkCreateItem]
