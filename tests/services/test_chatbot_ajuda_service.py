@@ -4,9 +4,9 @@ import pytest
 from sqlalchemy import func, select
 
 from app.core.exceptions import ChatbotNotFoundError, DuplicateChatbotTypeError
-from app.models.chatbot import Chatbot, ChatbotKind, KnowledgeModuleType
-from app.schemas.chatbot import ChatbotCreate, ChatbotMessageCreate, KnowledgeModuleCreate
-from app.services.chatbot_service import ChatbotService
+from app.models.chatbot_ajuda import Chatbot, ChatbotKind, KnowledgeModuleType
+from app.schemas.chatbot_ajuda import ChatbotCreate, ChatbotMessageCreate, KnowledgeModuleCreate
+from app.services.chatbot_ajuda_service import ChatbotAjudaService
 
 
 def _create_chatbot(db, tipo: ChatbotKind = ChatbotKind.AJUDA, ativo: bool = True) -> Chatbot:
@@ -18,7 +18,7 @@ def _create_chatbot(db, tipo: ChatbotKind = ChatbotKind.AJUDA, ativo: bool = Tru
 
 
 def test_given_chatbot_payload_when_create_then_persists_base_entity(db):
-    service = ChatbotService()
+    service = ChatbotAjudaService()
 
     chatbot = service.create_chatbot(
         db,
@@ -35,7 +35,7 @@ def test_given_chatbot_payload_when_create_then_persists_base_entity(db):
 
 
 def test_given_existing_type_when_create_then_raises_duplicate(db):
-    service = ChatbotService()
+    service = ChatbotAjudaService()
     _create_chatbot(db, tipo=ChatbotKind.AJUDA)
 
     with pytest.raises(DuplicateChatbotTypeError):
@@ -46,7 +46,7 @@ def test_given_existing_type_when_create_then_raises_duplicate(db):
 
 
 def test_given_dynamic_modules_when_message_sent_then_uses_active_filtered_topics(db):
-    service = ChatbotService()
+    service = ChatbotAjudaService()
     chatbot = _create_chatbot(db)
     service.create_module(
         db,
@@ -96,7 +96,7 @@ def test_given_dynamic_modules_when_message_sent_then_uses_active_filtered_topic
 
 
 def test_given_inactive_chatbot_when_message_sent_then_raises_not_found(db):
-    service = ChatbotService()
+    service = ChatbotAjudaService()
     _create_chatbot(db, ativo=False)
 
     with pytest.raises(ChatbotNotFoundError):

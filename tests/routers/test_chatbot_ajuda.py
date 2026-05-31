@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 
-from app.models.chatbot import Chatbot, ChatbotKind
+from app.models.chatbot_ajuda import Chatbot, ChatbotKind
 
 
 def _create_chatbot(db, tipo: ChatbotKind = ChatbotKind.AJUDA) -> Chatbot:

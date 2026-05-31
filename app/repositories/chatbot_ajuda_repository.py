@@ -3,11 +3,11 @@ from uuid import UUID
 from sqlalchemy import String, cast, select
 from sqlalchemy.orm import Session
 
-from app.models.chatbot import Chatbot, ChatbotKind, ChatbotKnowledgeModule
-from app.schemas.chatbot import ChatbotCreate, ChatbotUpdate, KnowledgeModuleCreate
+from app.models.chatbot_ajuda import Chatbot, ChatbotKind, ChatbotKnowledgeModule
+from app.schemas.chatbot_ajuda import ChatbotCreate, ChatbotUpdate, KnowledgeModuleCreate
 
 
-class ChatbotRepository:
+class ChatbotAjudaRepository:
     def list_chatbots(
         self,
         db: Session,

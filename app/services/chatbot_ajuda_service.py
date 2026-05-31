@@ -3,9 +3,9 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ChatbotNotFoundError, DuplicateChatbotTypeError
-from app.models.chatbot import Chatbot, ChatbotKind, ChatbotKnowledgeModule
-from app.repositories.chatbot_repository import ChatbotRepository
-from app.schemas.chatbot import (
+from app.models.chatbot_ajuda import Chatbot, ChatbotKind, ChatbotKnowledgeModule
+from app.repositories.chatbot_ajuda_repository import ChatbotAjudaRepository
+from app.schemas.chatbot_ajuda import (
     ChatbotCreate,
     ChatbotMessageCreate,
     ChatbotUpdate,
@@ -13,9 +13,9 @@ from app.schemas.chatbot import (
 )
 
 
-class ChatbotService:
-    def __init__(self, repository: ChatbotRepository | None = None) -> None:
-        self._repository = repository or ChatbotRepository()
+class ChatbotAjudaService:
+    def __init__(self, repository: ChatbotAjudaRepository | None = None) -> None:
+        self._repository = repository or ChatbotAjudaRepository()
 
     def list_chatbots(
         self,

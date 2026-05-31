@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db
-from app.models.chatbot import Chatbot, ChatbotKind, ChatbotKnowledgeModule
+from app.models.chatbot_ajuda import Chatbot, ChatbotKind, ChatbotKnowledgeModule
 from app.schemas.chat import ChatMessageResponse
-from app.schemas.chatbot import (
+from app.schemas.chatbot_ajuda import (
     ChatbotCreate,
     ChatbotMessageCreate,
     ChatbotOut,
@@ -14,13 +14,13 @@ from app.schemas.chatbot import (
     KnowledgeModuleCreate,
     KnowledgeModuleOut,
 )
-from app.services.chatbot_service import ChatbotService
+from app.services.chatbot_ajuda_service import ChatbotAjudaService
 
-router = APIRouter(prefix="/chatbots", tags=["chatbots"])
+router = APIRouter(prefix="/chatbots", tags=["chatbot-ajuda"])
 
 
-def get_chatbot_service() -> ChatbotService:
-    return ChatbotService()
+def get_chatbot_ajuda_service() -> ChatbotAjudaService:
+    return ChatbotAjudaService()
 
 
 @router.get("", response_model=list[ChatbotOut])
@@ -28,7 +28,7 @@ def list_chatbots(
     tipo: ChatbotKind | None = None,
     active_only: bool = False,
     db: Session = Depends(get_db),
-    service: ChatbotService = Depends(get_chatbot_service),
+    service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> list[Chatbot]:
     return service.list_chatbots(db, tipo=tipo, active_only=active_only)
 
@@ -37,7 +37,7 @@ def list_chatbots(
 def create_chatbot(
     payload: ChatbotCreate,
     db: Session = Depends(get_db),
-    service: ChatbotService = Depends(get_chatbot_service),
+    service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> Chatbot:
     return service.create_chatbot(db, payload)
 
@@ -46,7 +46,7 @@ def create_chatbot(
 def get_chatbot(
     tipo: ChatbotKind,
     db: Session = Depends(get_db),
-    service: ChatbotService = Depends(get_chatbot_service),
+    service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> Chatbot:
     return service.get_by_type(db, tipo)
 
@@ -56,7 +56,7 @@ def update_chatbot(
     chatbot_id: UUID,
     payload: ChatbotUpdate,
     db: Session = Depends(get_db),
-    service: ChatbotService = Depends(get_chatbot_service),
+    service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> Chatbot:
     return service.update_chatbot(db, chatbot_id, payload)
 
@@ -66,7 +66,7 @@ def list_modules(
     chatbot_id: UUID,
     active_only: bool = False,
     db: Session = Depends(get_db),
-    service: ChatbotService = Depends(get_chatbot_service),
+    service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> list[ChatbotKnowledgeModule]:
     return service.list_modules(db, chatbot_id, active_only=active_only)
 
@@ -80,7 +80,7 @@ def create_module(
     chatbot_id: UUID,
     payload: KnowledgeModuleCreate,
     db: Session = Depends(get_db),
-    service: ChatbotService = Depends(get_chatbot_service),
+    service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> ChatbotKnowledgeModule:
     return service.create_module(db, chatbot_id, payload)
 
@@ -90,7 +90,7 @@ def send_chatbot_message(
     tipo: ChatbotKind,
     payload: ChatbotMessageCreate,
     db: Session = Depends(get_db),
-    service: ChatbotService = Depends(get_chatbot_service),
+    service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> ChatMessageResponse:
     reply = service.send_message(db, tipo, payload)
     return ChatMessageResponse(reply=reply)

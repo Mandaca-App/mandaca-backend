@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.models.chatbot import ChatbotKind, KnowledgeModuleType
+from app.models.chatbot_ajuda import ChatbotKind, KnowledgeModuleType
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
 TopicText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]

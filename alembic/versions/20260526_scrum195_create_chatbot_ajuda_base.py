@@ -1,4 +1,4 @@
-"""SCRUM-195 create chatbots base
+"""SCRUM-195 create chatbot ajuda base
 
 Revision ID: 20260526scrum195
 Revises: ea6b8f4e6c3b
