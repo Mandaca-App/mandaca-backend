@@ -17,11 +17,13 @@ from app.core.exceptions import (
     AudioTranscriptionError,
     AutoApplyPersistenceError,
     BusinessContextNotFoundError,
+    ChatbotNotFoundError,
     ChatRateLimitError,
     ChatServiceConnectionError,
     ChatServiceError,
     ChatServiceTimeoutError,
     ContactNotFoundError,
+    DuplicateChatbotTypeError,
     DuplicateEnterpriseNameError,
     EnterpriseNotFoundError,
     FieldNotAllowedError,
@@ -29,6 +31,8 @@ from app.core.exceptions import (
     InvalidContextDataError,
     InvalidFieldValueError,
     MandacaError,
+    MenuContentUnreadableError,
+    MenuExtractionError,
     MenuNotFoundError,
     MenuPageEmptyError,
     UnsupportedAudioFormatError,
@@ -41,6 +45,7 @@ from app.routers import (
     auto_apply,
     business_context,
     chat,
+    chatbot_ajuda,
     contacts,
     enterprises,
     menus,
@@ -61,6 +66,7 @@ app.include_router(notifications.router)
 app.include_router(transcriptions.router)
 app.include_router(assessments.router)
 app.include_router(chat.router)
+app.include_router(chatbot_ajuda.router)
 app.include_router(menus.router)
 app.include_router(business_context.router)
 app.include_router(reports.router)
@@ -79,9 +85,11 @@ _NOT_FOUND_TYPES = (
     UserNotFoundError,
     AIReportNotFoundError,
     AssessmentNotFoundError,
+    ChatbotNotFoundError,
     MenuNotFoundError,
 )
 _BAD_REQUEST_TYPES = (
+    DuplicateChatbotTypeError,
     DuplicateEnterpriseNameError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
@@ -93,7 +101,7 @@ _BAD_GATEWAY_TYPES = (
     ChatServiceError,
     AIReportGenerationError,
 )
-_SERVICE_UNAVAILABLE_TYPES = (AssessmentClassificationError,)
+_SERVICE_UNAVAILABLE_TYPES = (AssessmentClassificationError, MenuExtractionError)
 _INTERNAL_ERROR_TYPES = (AutoApplyPersistenceError,)
 
 
@@ -161,6 +169,7 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
     fastapi_app.add_exception_handler(FieldNotAllowedError, _handle_422)
     fastapi_app.add_exception_handler(InvalidFieldValueError, _handle_422)
+    fastapi_app.add_exception_handler(MenuContentUnreadableError, _handle_422)
     for exc_class in _INTERNAL_ERROR_TYPES:
         fastapi_app.add_exception_handler(exc_class, _handle_500)
 

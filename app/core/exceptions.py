@@ -115,6 +115,18 @@ class ChatServiceError(MandacaError):
         super().__init__("Erro inesperado na API de chat. Tente novamente.")
 
 
+class ChatbotNotFoundError(MandacaError):
+    def __init__(self, chatbot_id: UUID | str) -> None:
+        super().__init__(f"Chatbot nao encontrado: {chatbot_id}")
+        self.chatbot_id = chatbot_id
+
+
+class DuplicateChatbotTypeError(MandacaError):
+    def __init__(self, tipo: str) -> None:
+        super().__init__(f"Ja existe um chatbot cadastrado para o tipo: {tipo}")
+        self.tipo = tipo
+
+
 # ---------------------------------------------------------------------------
 # Exceções de Menu (menu_service)
 # ---------------------------------------------------------------------------
@@ -228,3 +240,21 @@ class ContactNotFoundError(MandacaError):
     def __init__(self, contact_id: UUID | str) -> None:
         super().__init__(f"Contato não encontrado: {contact_id}")
         self.contact_id = contact_id
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Extração de Cardápio via IA (menu_extraction_service)
+# ---------------------------------------------------------------------------
+
+
+class MenuExtractionError(MandacaError):
+    def __init__(
+        self, detail: str = "Falha ao processar o cardápio via IA. Tente novamente."
+    ) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class MenuContentUnreadableError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("O conteúdo enviado não pôde ser interpretado como um cardápio.")
