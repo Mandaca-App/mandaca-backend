@@ -240,3 +240,21 @@ class ContactNotFoundError(MandacaError):
     def __init__(self, contact_id: UUID | str) -> None:
         super().__init__(f"Contato não encontrado: {contact_id}")
         self.contact_id = contact_id
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Extração de Cardápio via IA (menu_extraction_service)
+# ---------------------------------------------------------------------------
+
+
+class MenuExtractionError(MandacaError):
+    def __init__(
+        self, detail: str = "Falha ao processar o cardápio via IA. Tente novamente."
+    ) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class MenuContentUnreadableError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("O conteúdo enviado não pôde ser interpretado como um cardápio.")

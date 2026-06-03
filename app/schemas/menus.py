@@ -58,3 +58,10 @@ class MenuBulkCreateItem(BaseModel):
 
 class MenuBulkCreate(BaseModel):
     items: list[MenuBulkCreateItem]
+
+
+class MenuItemExtracted(BaseModel):
+    descricao: Annotated[Optional[str], StringConstraints(max_length=255)] = None
+    historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
+    preco: Decimal = Decimal("0.0")
+    categoria: CategoriaCardapio

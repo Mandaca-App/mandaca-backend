@@ -31,6 +31,8 @@ from app.core.exceptions import (
     InvalidContextDataError,
     InvalidFieldValueError,
     MandacaError,
+    MenuContentUnreadableError,
+    MenuExtractionError,
     MenuNotFoundError,
     MenuPageEmptyError,
     UnsupportedAudioFormatError,
@@ -99,7 +101,7 @@ _BAD_GATEWAY_TYPES = (
     ChatServiceError,
     AIReportGenerationError,
 )
-_SERVICE_UNAVAILABLE_TYPES = (AssessmentClassificationError,)
+_SERVICE_UNAVAILABLE_TYPES = (AssessmentClassificationError, MenuExtractionError)
 _INTERNAL_ERROR_TYPES = (AutoApplyPersistenceError,)
 
 
@@ -167,6 +169,7 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(InvalidContextDataError, _handle_422)
     fastapi_app.add_exception_handler(FieldNotAllowedError, _handle_422)
     fastapi_app.add_exception_handler(InvalidFieldValueError, _handle_422)
+    fastapi_app.add_exception_handler(MenuContentUnreadableError, _handle_422)
     for exc_class in _INTERNAL_ERROR_TYPES:
         fastapi_app.add_exception_handler(exc_class, _handle_500)
 
