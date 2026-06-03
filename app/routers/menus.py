@@ -11,10 +11,12 @@ from app.models.menu import CategoriaCardapio
 from app.schemas.menus import (
     MenuBulkCreate,
     MenuCreate,
+    MenuItemExtracted,
     MenuPaginatedResponse,
     MenuResponse,
     MenuUpdate,
 )
+from app.services.menu_extraction_service import MenuExtractionService
 
 router = APIRouter(prefix="/menus", tags=["menus"])
 
@@ -54,6 +56,19 @@ def get_menu(
     db: Session = Depends(get_db),
 ) -> MenuResponse:
     return menu_service.get_by_id(menu_id, db)
+
+
+@router.post("/scan", response_model=list[MenuItemExtracted], status_code=status.HTTP_200_OK)
+def scan_menu(
+    foto: UploadFile = File(...),
+) -> list[MenuItemExtracted]:
+    """Recebe uma imagem de cardápio, transcreve via IA e retorna os itens estruturados."""
+    try:
+        image_bytes = foto.file.read()
+        service = MenuExtractionService()
+        return service.scan_from_image(image_bytes, foto.content_type)
+    except InvalidImageTypeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.post("/bulk", response_model=list[MenuResponse], status_code=status.HTTP_201_CREATED)
