@@ -115,6 +115,18 @@ class ChatServiceError(MandacaError):
         super().__init__("Erro inesperado na API de chat. Tente novamente.")
 
 
+class ChatbotNotFoundError(MandacaError):
+    def __init__(self, chatbot_id: UUID | str) -> None:
+        super().__init__(f"Chatbot nao encontrado: {chatbot_id}")
+        self.chatbot_id = chatbot_id
+
+
+class DuplicateChatbotTypeError(MandacaError):
+    def __init__(self, tipo: str) -> None:
+        super().__init__(f"Ja existe um chatbot cadastrado para o tipo: {tipo}")
+        self.tipo = tipo
+
+
 # ---------------------------------------------------------------------------
 # Exceções de Menu (menu_service)
 # ---------------------------------------------------------------------------
