@@ -11,13 +11,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import MenuContentUnreadableError, MenuExtractionError
+from app.core.exceptions import (
+    InvalidImageTypeError,
+    MenuContentUnreadableError,
+    MenuExtractionError,
+)
 from app.models.menu import CategoriaCardapio
 from app.services.menu_extraction_service import MenuExtractionService
 
 FAKE_MENU_TEXT = "Baião de dois R$18,00 | Carne de sol R$25,00 | Suco de umbu R$8,00"
 FAKE_UNREADABLE_TEXT = "asdkjh aslkdjh lkajsd lkajsdlkj"
-
+FAKE_IMAGE_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -205,3 +209,54 @@ def test_given_each_categoria_when_extracted_then_maps_correctly(categoria_str, 
 
     # THEN
     assert result[0].categoria == categoria_enum
+
+
+# ---------------------------------------------------------------------------
+# scan_from_image — validação de tipo e pipeline imagem→texto→itens
+# ---------------------------------------------------------------------------
+
+
+def test_given_valid_image_when_scan_then_returns_extracted_items():
+    # GIVEN
+    service = MenuExtractionService()
+
+    payload = (
+        '{"itens": ['
+        '{"descricao": "Baião de dois", "historia": "", "preco": 18.0, '
+        '"categoria": "prato_principal"}'
+        "]}"
+    )
+    gemini_client = _mock_gemini_client(payload)
+
+    with patch.object(service, "_transcribe_image", return_value=FAKE_MENU_TEXT):
+        with patch(
+            "app.services.menu_extraction_service.MenuExtractionService._get_gemini_client",
+            return_value=gemini_client,
+        ):
+            # WHEN
+            result = service.scan_from_image(FAKE_IMAGE_BYTES, "image/png")
+
+    # THEN
+    assert len(result) == 1
+    assert result[0].descricao == "Baião de dois"
+    assert result[0].categoria == CategoriaCardapio.PRATO_PRINCIPAL
+
+
+@pytest.mark.parametrize("content_type", [None, "", "application/pdf", "text/plain"])
+def test_given_invalid_content_type_when_scan_then_raises_invalid_image_error(content_type):
+    # GIVEN
+    service = MenuExtractionService()
+
+    # WHEN / THEN
+    with pytest.raises(InvalidImageTypeError):
+        service.scan_from_image(FAKE_IMAGE_BYTES, content_type)
+
+
+def test_given_transcription_failure_when_scan_then_raises_extraction_error():
+    # GIVEN
+    service = MenuExtractionService()
+
+    with patch.object(service, "_transcribe_image", side_effect=MenuExtractionError()):
+        # WHEN / THEN
+        with pytest.raises(MenuExtractionError):
+            service.scan_from_image(FAKE_IMAGE_BYTES, "image/jpeg")
