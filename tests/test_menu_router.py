@@ -13,9 +13,12 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.exceptions import InvalidImageTypeError
 from app.core.session import get_db
 from app.main import app
 from app.models.menu import CategoriaCardapio
+from app.schemas.menus import MenuItemExtracted
+from app.services.menu_extraction_service import MenuExtractionService
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -71,6 +74,15 @@ _PAGINATED_RESPONSE_WITH_MORE = {
 }
 
 _BULK_RESPONSE = [_MENU_RESPONSE]
+
+_SCAN_RESPONSE = [
+    MenuItemExtracted(
+        descricao="Baião de dois",
+        historia="Prato típico nordestino",
+        preco=Decimal("18.0"),
+        categoria=CategoriaCardapio.PRATO_PRINCIPAL,
+    )
+]
 
 
 @pytest.fixture
@@ -391,3 +403,42 @@ def test_given_item_without_url_foto_when_bulk_create_then_url_is_null(db_mock):
 
     assert response.status_code == 201
     assert response.json()[0]["url_foto_item"] is None
+
+
+# ---------------------------------------------------------------------------
+# POST /menus/scan
+# ---------------------------------------------------------------------------
+
+
+def test_given_valid_image_when_scan_then_returns_200():
+    fake_image = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+
+    with patch.object(MenuExtractionService, "scan_from_image", return_value=_SCAN_RESPONSE):
+        response = client.post(
+            "/menus/scan",
+            files={"foto": ("cardapio.png", fake_image, "image/png")},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["descricao"] == "Baião de dois"
+    assert data[0]["categoria"] == "prato_principal"
+    assert data[0]["preco"] == "18.0"
+
+
+def test_given_invalid_image_type_when_scan_then_returns_400():
+    with patch.object(
+        MenuExtractionService, "scan_from_image", side_effect=InvalidImageTypeError()
+    ):
+        response = client.post(
+            "/menus/scan",
+            files={"foto": ("doc.pdf", b"fakepdfbytes", "application/pdf")},
+        )
+
+    assert response.status_code == 400
+
+
+def test_given_no_file_when_scan_then_returns_422():
+    response = client.post("/menus/scan")
+    assert response.status_code == 422
