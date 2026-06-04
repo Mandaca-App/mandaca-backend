@@ -1,10 +1,16 @@
+import enum
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.session import Base
+
+
+class StatusReserva(str, enum.Enum):
+    AGUARDANDO = "aguardando"
+    ACEITO = "aceito"
 
 
 class Reservation(Base):
@@ -18,6 +24,11 @@ class Reservation(Base):
     num_mesas: Mapped[int] = mapped_column(Integer, nullable=False)
     num_pessoas: Mapped[int] = mapped_column(Integer, nullable=False)
     mensagem: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status: Mapped[StatusReserva] = mapped_column(
+        Enum(StatusReserva, name="status_reserva_enum"),
+        nullable=False,
+        default=StatusReserva.AGUARDANDO,
+    )
     usuario_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("usuarios.id_usuario", ondelete="CASCADE"),
