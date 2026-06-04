@@ -361,7 +361,7 @@ def test_given_valid_bulk_payload_when_bulk_create_then_returns_201(db_mock):
         return_value=_BULK_RESPONSE,
     ):
         response = client.post(
-            "/menus/bulk",
+            f"/menus/bulk/{ENTERPRISE_ID}",
             json={
                 "items": [
                     {
@@ -370,7 +370,6 @@ def test_given_valid_bulk_payload_when_bulk_create_then_returns_201(db_mock):
                         "preco": "25.50",
                         "categoria": "lanche",
                         "status": True,
-                        "empresa_id": str(ENTERPRISE_ID),
                     }
                 ]
             },
@@ -388,14 +387,13 @@ def test_given_item_without_url_foto_when_bulk_create_then_url_is_null(db_mock):
         return_value=_BULK_RESPONSE,
     ):
         response = client.post(
-            "/menus/bulk",
+            f"/menus/bulk/{ENTERPRISE_ID}",
             json={
                 "items": [
                     {
                         "preco": "25.50",
                         "categoria": "lanche",
                         "status": True,
-                        "empresa_id": str(ENTERPRISE_ID),
                     }
                 ]
             },
@@ -403,6 +401,27 @@ def test_given_item_without_url_foto_when_bulk_create_then_url_is_null(db_mock):
 
     assert response.status_code == 201
     assert response.json()[0]["url_foto_item"] is None
+
+
+def test_given_item_without_status_when_bulk_create_then_status_defaults_to_true(db_mock):
+    with patch(
+        "app.routers.menus.menu_service.bulk_create",
+        return_value=_BULK_RESPONSE,
+    ):
+        response = client.post(
+            f"/menus/bulk/{ENTERPRISE_ID}",
+            json={
+                "items": [
+                    {
+                        "preco": "25.50",
+                        "categoria": "lanche",
+                        # status ausente intencionalmente
+                    }
+                ]
+            },
+        )
+
+    assert response.status_code == 201
 
 
 # ---------------------------------------------------------------------------
