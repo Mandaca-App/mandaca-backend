@@ -258,3 +258,14 @@ class MenuExtractionError(MandacaError):
 class MenuContentUnreadableError(MandacaError):
     def __init__(self) -> None:
         super().__init__("O conteúdo enviado não pôde ser interpretado como um cardápio.")
+
+
+# ---------------------------------------------------------------------------
+# Exceções de Reserva
+# ---------------------------------------------------------------------------
+
+
+class ReservationNotFoundError(MandacaError):
+    def __init__(self, reservation_id: UUID | str) -> None:
+        super().__init__(f"Reserva não encontrada: {reservation_id}")
+        self.reservation_id = reservation_id

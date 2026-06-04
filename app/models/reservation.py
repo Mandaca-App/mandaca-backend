@@ -25,7 +25,11 @@ class Reservation(Base):
     num_pessoas: Mapped[int] = mapped_column(Integer, nullable=False)
     mensagem: Mapped[str | None] = mapped_column(String(120), nullable=True)
     status: Mapped[StatusReserva] = mapped_column(
-        Enum(StatusReserva, name="status_reserva_enum"),
+        Enum(
+            StatusReserva,
+            name="status_reserva_enum",
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=StatusReserva.AGUARDANDO,
     )
