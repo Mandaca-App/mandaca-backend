@@ -52,7 +52,6 @@ class MenuBulkCreateItem(BaseModel):
     preco: Decimal
     categoria: CategoriaCardapio
     status: bool
-    empresa_id: UUID
     url_foto_item: Optional[str] = None
 
 
