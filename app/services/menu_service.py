@@ -196,12 +196,10 @@ def list_by_enterprise_paginated(
     )
 
 
-def bulk_create(payload: MenuBulkCreate, db: Session) -> list[Menu]:
+def bulk_create(payload: MenuBulkCreate, empresa_id: UUID, db: Session) -> list[Menu]:
     """Insere múltiplos itens em lote, validando todas as empresas antes de persistir."""
-    unique_enterprise_ids = {item.empresa_id for item in payload.items}
-    for enterprise_id in unique_enterprise_ids:
-        if not db.get(Enterprise, enterprise_id):
-            raise EnterpriseNotFoundError(enterprise_id)
+    if not db.get(Enterprise, empresa_id):
+        raise EnterpriseNotFoundError(empresa_id)
 
     menus = [
         Menu(
@@ -210,7 +208,7 @@ def bulk_create(payload: MenuBulkCreate, db: Session) -> list[Menu]:
             preco=item.preco,
             categoria=item.categoria,
             status=item.status,
-            empresa_id=item.empresa_id,
+            empresa_id=empresa_id,
             url_foto_item=item.url_foto_item,
         )
         for item in payload.items

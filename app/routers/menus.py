@@ -71,12 +71,15 @@ def scan_menu(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.post("/bulk", response_model=list[MenuResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/bulk/{empresa_id}", response_model=list[MenuResponse], status_code=status.HTTP_201_CREATED
+)
 def bulk_create_menus(
+    empresa_id: UUID,
     payload: MenuBulkCreate,
     db: Session = Depends(get_db),
 ) -> list[MenuResponse]:
-    return menu_service.bulk_create(payload, db)
+    return menu_service.bulk_create(payload, empresa_id, db)
 
 
 @router.post("/", response_model=MenuResponse, status_code=status.HTTP_201_CREATED)
