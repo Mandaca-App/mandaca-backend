@@ -636,19 +636,17 @@ def test_given_valid_items_when_bulk_create_then_persists_all():
                 preco=Decimal("20.00"),
                 categoria=CategoriaCardapio.PRATO_PRINCIPAL,
                 status=True,
-                empresa_id=FAKE_ENTERPRISE_ID,
             ),
             MenuBulkCreateItem(
                 descricao="Prato B",
                 preco=Decimal("15.00"),
                 categoria=CategoriaCardapio.ENTRADA,
                 status=True,
-                empresa_id=FAKE_ENTERPRISE_ID,
             ),
         ]
     )
 
-    menu_service.bulk_create(payload, db)
+    menu_service.bulk_create(payload, FAKE_ENTERPRISE_ID, db)
 
     db.add_all.assert_called_once()
     added = db.add_all.call_args[0][0]
@@ -667,12 +665,11 @@ def test_given_item_without_url_foto_when_bulk_create_then_url_is_none():
                 preco=Decimal("10.00"),
                 categoria=CategoriaCardapio.BEBIDA,
                 status=True,
-                empresa_id=FAKE_ENTERPRISE_ID,
             )
         ]
     )
 
-    menu_service.bulk_create(payload, db)
+    menu_service.bulk_create(payload, FAKE_ENTERPRISE_ID, db)
 
     added = db.add_all.call_args[0][0]
     assert added[0].url_foto_item is None
@@ -687,38 +684,31 @@ def test_given_missing_enterprise_when_bulk_create_then_raises_and_does_not_pers
                 preco=Decimal("10.00"),
                 categoria=CategoriaCardapio.BEBIDA,
                 status=True,
-                empresa_id=FAKE_ENTERPRISE_ID,
             )
         ]
     )
 
     with pytest.raises(EnterpriseNotFoundError):
-        menu_service.bulk_create(payload, db)
+        menu_service.bulk_create(payload, FAKE_ENTERPRISE_ID, db)
 
     db.add_all.assert_not_called()
     db.commit.assert_not_called()
 
 
-def test_given_multiple_enterprises_when_bulk_create_then_validates_each_unique_id():
+def test_given_multiple_items_when_bulk_create_then_validates_enterprise_only_once():
     db = _mock_db()
     db.get.return_value = _make_enterprise()
     payload = MenuBulkCreate(
         items=[
             MenuBulkCreateItem(
-                preco=Decimal("10.00"),
-                categoria=CategoriaCardapio.BEBIDA,
-                status=True,
-                empresa_id=FAKE_ENTERPRISE_ID,
+                preco=Decimal("10.00"), categoria=CategoriaCardapio.BEBIDA, status=True
             ),
             MenuBulkCreateItem(
-                preco=Decimal("20.00"),
-                categoria=CategoriaCardapio.LANCHE,
-                status=True,
-                empresa_id=FAKE_OTHER_ENTERPRISE_ID,
+                preco=Decimal("20.00"), categoria=CategoriaCardapio.LANCHE, status=True
             ),
         ]
     )
 
-    menu_service.bulk_create(payload, db)
+    menu_service.bulk_create(payload, FAKE_ENTERPRISE_ID, db)
 
-    assert db.get.call_count == 2
+    assert db.get.call_count == 1
