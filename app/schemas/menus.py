@@ -51,7 +51,7 @@ class MenuBulkCreateItem(BaseModel):
     historia: Annotated[Optional[str], StringConstraints(max_length=500)] = None
     preco: Decimal
     categoria: CategoriaCardapio
-    status: bool
+    status: bool = True
     url_foto_item: Optional[str] = None
 
 
