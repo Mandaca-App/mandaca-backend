@@ -35,6 +35,7 @@ from app.core.exceptions import (
     MenuExtractionError,
     MenuNotFoundError,
     MenuPageEmptyError,
+    ReservationNotFoundError,
     UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
@@ -52,6 +53,7 @@ from app.routers import (
     notifications,
     photos,
     reports,
+    reservations,
     transcriptions,
     tutoriais,
     users,
@@ -73,6 +75,7 @@ app.include_router(reports.router)
 app.include_router(auto_apply.router)
 app.include_router(tutoriais.router)
 app.include_router(contacts.router)
+app.include_router(reservations.router)
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +90,7 @@ _NOT_FOUND_TYPES = (
     AssessmentNotFoundError,
     ChatbotNotFoundError,
     MenuNotFoundError,
+    ReservationNotFoundError,
 )
 _BAD_REQUEST_TYPES = (
     DuplicateChatbotTypeError,
