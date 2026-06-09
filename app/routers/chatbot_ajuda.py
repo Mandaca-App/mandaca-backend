@@ -86,11 +86,11 @@ def create_module(
 
 
 @router.post("/{tipo}/message", response_model=ChatMessageResponse)
-def send_chatbot_message(
+async def send_chatbot_message(
     tipo: ChatbotKind,
     payload: ChatbotMessageCreate,
     db: Session = Depends(get_db),
     service: ChatbotAjudaService = Depends(get_chatbot_ajuda_service),
 ) -> ChatMessageResponse:
-    reply = service.send_message(db, tipo, payload)
+    reply = await service.send_message(db, tipo, payload)
     return ChatMessageResponse(reply=reply)
