@@ -54,6 +54,7 @@ from app.routers import (
     notifications,
     photos,
     reports,
+    reservation_chat,
     reservations,
     transcriptions,
     tutoriais,
@@ -77,6 +78,7 @@ app.include_router(auto_apply.router)
 app.include_router(tutoriais.router)
 app.include_router(contacts.router)
 app.include_router(reservations.router)
+app.include_router(reservation_chat.router)
 
 
 # ---------------------------------------------------------------------------
