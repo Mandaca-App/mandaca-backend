@@ -4,10 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.assessment import Assessment, TipoAvaliacao
+from app.models.business_context import BusinessContext
 from app.models.enterprise import Enterprise
 from app.models.menu import Menu
 from app.models.user import User
 from app.schemas.chat import EnterpriseContext
+from app.services.conversation_summary_service import _CONVERSATION_NOTES_HASH
 
 _MAX_ASSESSMENTS = 5
 
@@ -58,6 +60,12 @@ class ChatContextService:
                 descricao = item.descricao or "Item sem descricao"
                 parts.append(f"- [{item.categoria.value}] {descricao} - R$ {item.preco:.2f}")
 
+        notas_conversa = self._fetch_conversation_notes(empresa_id, db)
+        if notas_conversa:
+            parts.append("")
+            parts.append("=== HISTÓRICO RESUMIDO DA CONVERSA ===")
+            parts.append(notas_conversa)
+
         parts.append("===================================")
         return "\n".join(parts)
 
@@ -83,6 +91,13 @@ class ChatContextService:
         # Para garantir "mais recentes", adicionar criado_em ao modelo numa migration futura.
         stmt = select(Assessment).where(Assessment.empresa_id == empresa_id).limit(_MAX_ASSESSMENTS)
         return list(db.scalars(stmt).all())
+
+    def _fetch_conversation_notes(self, empresa_id: uuid.UUID, db: Session) -> str | None:
+        stmt = select(BusinessContext.notas_conversa).where(
+            BusinessContext.empresa_id == empresa_id,
+            BusinessContext.hash_contexto == _CONVERSATION_NOTES_HASH,
+        )
+        return db.scalar(stmt)
 
     def _fetch_active_menu(self, empresa_id: uuid.UUID, db: Session) -> list[Menu]:
         stmt = select(Menu).where(

@@ -255,6 +255,49 @@ async def test_given_empty_context_when_message_sent_then_system_prompt_unchange
 
 
 # ---------------------------------------------------------------------------
+# SCRUM-251: disparo da sumarizacao incremental
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_given_message_sent_when_committed_then_triggers_summarize():
+    # GIVEN
+    summary_service = MagicMock()
+    summary_service.maybe_summarize = AsyncMock()
+    service = ChatService(
+        groq_client=_mock_groq_client(),
+        context_service=_mock_context_service(),
+        summary_service=summary_service,
+    )
+    db = _mock_db()
+
+    # WHEN
+    await service.send_message("oi", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
+
+    # THEN
+    summary_service.maybe_summarize.assert_awaited_once_with(FAKE_ENTERPRISE_ID, db)
+
+
+@pytest.mark.anyio
+async def test_given_summary_fails_when_sent_then_reply_still_returned():
+    # GIVEN
+    summary_service = MagicMock()
+    summary_service.maybe_summarize = AsyncMock(side_effect=RuntimeError("boom"))
+    service = ChatService(
+        groq_client=_mock_groq_client(),
+        context_service=_mock_context_service(),
+        summary_service=summary_service,
+    )
+    db = _mock_db()
+
+    # WHEN
+    result = await service.send_message("oi", FAKE_ENTERPRISE_ID, FAKE_USER_ID, db)
+
+    # THEN
+    assert result == FAKE_REPLY
+
+
+# ---------------------------------------------------------------------------
 # SCRUM-224: propagacao do user_id ao ChatContextService
 # ---------------------------------------------------------------------------
 

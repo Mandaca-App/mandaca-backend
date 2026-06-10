@@ -13,10 +13,12 @@ from datetime import datetime, time, timezone
 from decimal import Decimal
 
 from app.models.assessment import Assessment, TipoAvaliacao
+from app.models.business_context import BusinessContext
 from app.models.enterprise import Enterprise
 from app.models.menu import CategoriaCardapio, Menu
 from app.models.user import TipoUsuario, User
 from app.services.chat_context_service import ChatContextService
+from app.services.conversation_summary_service import _CONVERSATION_NOTES_HASH
 
 
 def _create_enterprise(
@@ -336,3 +338,29 @@ def test_given_unknown_user_when_context_built_then_skips_user_block(db):
 
     # THEN
     assert "USUÁRIO" not in context
+
+
+# ---------------------------------------------------------------------------
+# SCRUM-251: notas_conversa no contexto
+# ---------------------------------------------------------------------------
+
+
+def test_given_notes_exist_when_build_context_then_notes_injected(db):
+    # GIVEN
+    empresa = _create_enterprise(db)
+    db.add(
+        BusinessContext(
+            empresa_id=empresa.id_empresa,
+            hash_contexto=_CONVERSATION_NOTES_HASH,
+            dados_contexto={},
+            notas_conversa="Cliente prefere atendimento pela manha.",
+        )
+    )
+    db.commit()
+    service = ChatContextService()
+
+    # WHEN
+    context = service.build_context(empresa.id_empresa, db)
+
+    # THEN
+    assert "Cliente prefere atendimento pela manha." in context
