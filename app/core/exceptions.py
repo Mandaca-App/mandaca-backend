@@ -269,3 +269,9 @@ class ReservationNotFoundError(MandacaError):
     def __init__(self, reservation_id: UUID | str) -> None:
         super().__init__(f"Reserva não encontrada: {reservation_id}")
         self.reservation_id = reservation_id
+
+
+class SenderNotInReservationError(MandacaError):
+    def __init__(self, remetente_id: UUID | str) -> None:
+        super().__init__(f"Remetente não participa desta reserva: {remetente_id}")
+        self.remetente_id = remetente_id
