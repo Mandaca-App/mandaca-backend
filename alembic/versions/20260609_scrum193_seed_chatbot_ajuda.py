@@ -1,19 +1,19 @@
 """SCRUM-193 seed chatbot ajuda
 
 Revision ID: 20260609scrum193
-Revises: 415578617141
-Create Date: 2026-06-09 00:00:00.000000
+Revises: e0457fdbd5b7
+Create Date: 2026-06-10 21:10:24.753686
 
 """
-
 from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
 
+
 # revision identifiers, used by Alembic.
 revision: str = "20260609scrum193"
-down_revision: Union[str, Sequence[str], None] = "415578617141"
+down_revision: Union[str, Sequence[str], None] = "e0457fdbd5b7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -21,6 +21,7 @@ _CHATBOT_AJUDA_ID = "19300000-0000-0000-0000-000000000193"
 
 
 def upgrade() -> None:
+    """Upgrade schema."""
     op.execute(
         sa.text(
             """
@@ -50,6 +51,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Downgrade schema."""
     op.execute(
         sa.text(
             """
