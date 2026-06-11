@@ -1,7 +1,7 @@
 """scrum141_add_reservation_messages_table
 
 Revision ID: cc35bffcf9a7
-Revises: e0457fdbd5b7
+Revises: 20260609scrum193
 Create Date: 2026-06-10 20:38:32.378696
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'cc35bffcf9a7'
-down_revision: Union[str, Sequence[str], None] = 'e0457fdbd5b7'
+down_revision: Union[str, Sequence[str], None] = '20260609scrum193'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
