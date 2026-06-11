@@ -1,6 +1,9 @@
+from unittest.mock import AsyncMock, patch
+
 from sqlalchemy import func, select
 
 from app.models.chatbot_ajuda import Chatbot, ChatbotKind
+from app.services.chatbot_ajuda_service import ChatbotAjudaService
 
 
 def _create_chatbot(db, tipo: ChatbotKind = ChatbotKind.AJUDA) -> Chatbot:
@@ -62,18 +65,23 @@ def test_given_help_chatbot_when_message_sent_then_returns_chat_reply_contract(c
         },
     )
 
-    response = client.post(
-        "/chatbots/ajuda/message",
-        json={
-            "mensagem": "Como vejo tutoriais?",
-            "topicos": ["tutorial"],
-        },
-    )
+    with patch.object(
+        ChatbotAjudaService,
+        "send_message",
+        new=AsyncMock(return_value="Abra a Central de Ajuda e filtre por tutoriais."),
+    ):
+        response = client.post(
+            "/chatbots/ajuda/message",
+            json={
+                "mensagem": "Como vejo tutoriais?",
+                "topicos": ["tutorial"],
+            },
+        )
 
     assert response.status_code == 200
     data = response.json()
     assert list(data.keys()) == ["reply"]
-    assert "tutorial" in data["reply"]
+    assert "tutoriais" in data["reply"]
 
 
 def test_given_invalid_chatbot_type_when_message_sent_then_returns_422(client):
