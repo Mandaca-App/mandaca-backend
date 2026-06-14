@@ -1,8 +1,18 @@
 from uuid import UUID
 
+import groq as groq_sdk
+from groq import AsyncGroq
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ChatbotNotFoundError, DuplicateChatbotTypeError
+from app.core.config import settings
+from app.core.exceptions import (
+    ChatbotNotFoundError,
+    ChatRateLimitError,
+    ChatServiceConnectionError,
+    ChatServiceError,
+    ChatServiceTimeoutError,
+    DuplicateChatbotTypeError,
+)
 from app.models.chatbot_ajuda import Chatbot, ChatbotKind, ChatbotKnowledgeModule
 from app.repositories.chatbot_ajuda_repository import ChatbotAjudaRepository
 from app.schemas.chatbot_ajuda import (
@@ -11,11 +21,24 @@ from app.schemas.chatbot_ajuda import (
     ChatbotUpdate,
     KnowledgeModuleCreate,
 )
+from app.services.prompts.chatbot_ajuda_tutorial import (
+    ChatbotAjudaPromptModule,
+    build_chatbot_ajuda_system_prompt,
+)
+
+_CHATBOT_AJUDA_MODEL = "llama-3.3-70b-versatile"
+_MAX_TOKENS = 700
+_TEMPERATURE = 0.2
 
 
 class ChatbotAjudaService:
-    def __init__(self, repository: ChatbotAjudaRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: ChatbotAjudaRepository | None = None,
+        groq_client: AsyncGroq | None = None,
+    ) -> None:
         self._repository = repository or ChatbotAjudaRepository()
+        self._client = groq_client or AsyncGroq(api_key=settings.groq_api_key)
 
     def list_chatbots(
         self,
@@ -73,7 +96,7 @@ class ChatbotAjudaService:
             topicos=topicos,
         )
 
-    def send_message(
+    async def send_message(
         self,
         db: Session,
         tipo: ChatbotKind,
@@ -86,21 +109,57 @@ class ChatbotAjudaService:
             active_only=True,
             topicos=payload.topicos or None,
         )
-        return self._build_scaffold_reply(chatbot, modules)
+        system_prompt = build_chatbot_ajuda_system_prompt(self._build_prompt_modules(modules))
 
-    def _build_scaffold_reply(
+        try:
+            response = await self._client.chat.completions.create(
+                model=_CHATBOT_AJUDA_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": self._build_user_message(chatbot, payload)},
+                ],
+                max_tokens=_MAX_TOKENS,
+                temperature=_TEMPERATURE,
+            )
+            return (response.choices[0].message.content or "").strip()
+        except groq_sdk.RateLimitError:
+            raise ChatRateLimitError()
+        except groq_sdk.APITimeoutError:
+            raise ChatServiceTimeoutError()
+        except groq_sdk.APIConnectionError:
+            raise ChatServiceConnectionError()
+        except groq_sdk.APIStatusError:
+            raise ChatServiceError()
+
+    def _build_prompt_modules(
+        self,
+        modules: list[ChatbotKnowledgeModule],
+    ) -> list[ChatbotAjudaPromptModule]:
+        prompt_modules: list[ChatbotAjudaPromptModule] = []
+        for module in modules:
+            content = module.conteudo or "Modulo cadastrado sem conteudo detalhado."
+            if module.referencia:
+                content = f"{content} Consulte tambem: {module.referencia}."
+            prompt_modules.append(
+                ChatbotAjudaPromptModule(
+                    topic=module.topico,
+                    title=f"Modulo {module.topico}",
+                    status="ativo",
+                    content=content,
+                    reference=module.referencia,
+                )
+            )
+        return prompt_modules
+
+    def _build_user_message(
         self,
         chatbot: Chatbot,
-        modules: list[ChatbotKnowledgeModule],
+        payload: ChatbotMessageCreate,
     ) -> str:
-        if modules:
-            topics = ", ".join(module.topico for module in modules)
-            return (
-                f"Recebi sua mensagem no chatbot {chatbot.tipo.value}. "
-                f"Modulos de conhecimento carregados: {topics}."
-            )
-
-        return (
-            f"Recebi sua mensagem no chatbot {chatbot.tipo.value}. "
-            "Nenhum modulo de conhecimento ativo foi encontrado para esta conversa."
-        )
+        context_lines = [
+            f"Tipo de chatbot: {chatbot.tipo.value}",
+            f"Pergunta: {payload.mensagem}",
+        ]
+        if payload.topicos:
+            context_lines.append("Topicos solicitados: " + ", ".join(payload.topicos))
+        return "\n".join(context_lines)

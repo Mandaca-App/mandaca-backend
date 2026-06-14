@@ -15,6 +15,7 @@ from app.core.exceptions import (
 )
 from app.models.chat_message import ChatMessage
 from app.services.chat_context_service import ChatContextService
+from app.services.conversation_summary_service import ConversationSummaryService
 from app.services.prompts.consultor_persona import build_system_prompt
 
 logger = logging.getLogger(__name__)
@@ -29,9 +30,11 @@ class ChatService:
         self,
         groq_client: AsyncGroq | None = None,
         context_service: ChatContextService | None = None,
+        summary_service: ConversationSummaryService | None = None,
     ) -> None:
         self._client = groq_client or AsyncGroq(api_key=settings.groq_api_key)
         self._context_service = context_service or ChatContextService()
+        self._summary_service = summary_service or ConversationSummaryService(self._client)
 
     async def send_message(
         self,
@@ -77,6 +80,11 @@ class ChatService:
         except Exception:
             db.rollback()
             raise
+
+        try:
+            await self._summary_service.maybe_summarize(enterprise_id, db)
+        except Exception:
+            logger.warning("Sumarizacao de conversa falhou para empresa %s", enterprise_id)
 
         return content
 
