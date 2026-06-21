@@ -15,6 +15,7 @@ from app.core.exceptions import (
     AudioServiceTimeoutError,
     AudioTooLargeError,
     AudioTranscriptionError,
+    AuthEmailAlreadyExistsError,
     AutoApplyPersistenceError,
     BusinessContextNotFoundError,
     ChatbotNotFoundError,
@@ -41,9 +42,11 @@ from app.core.exceptions import (
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
     UserNotFoundError,
+    UserRegistrationPersistenceError,
 )
 from app.routers import (
     assessments,
+    auth,
     auto_apply,
     business_context,
     chat,
@@ -63,6 +66,7 @@ from app.routers import (
 
 app = FastAPI(title="Meu Projeto", version="0.1.0")
 
+app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(enterprises.router)
 app.include_router(photos.router)
@@ -96,6 +100,7 @@ _NOT_FOUND_TYPES = (
     ReservationNotFoundError,
 )
 _BAD_REQUEST_TYPES = (
+    AuthEmailAlreadyExistsError,
     DuplicateChatbotTypeError,
     DuplicateEnterpriseNameError,
     UserAlreadyHasEnterpriseError,
@@ -157,6 +162,10 @@ async def _handle_500(request: Request, exc: MandacaError) -> JSONResponse:
     return JSONResponse(status_code=500, content={"detail": "Erro interno do servidor."})
 
 
+async def _handle_registration_500(request: Request, exc: MandacaError) -> JSONResponse:
+    return JSONResponse(status_code=500, content={"detail": "Falha no cadastro do usuario."})
+
+
 def _register_handlers(fastapi_app: FastAPI) -> None:
     for exc_class in _NOT_FOUND_TYPES:
         fastapi_app.add_exception_handler(exc_class, _handle_404)
@@ -182,6 +191,7 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(FieldNotAllowedError, _handle_422)
     fastapi_app.add_exception_handler(InvalidFieldValueError, _handle_422)
     fastapi_app.add_exception_handler(MenuContentUnreadableError, _handle_422)
+    fastapi_app.add_exception_handler(UserRegistrationPersistenceError, _handle_registration_500)
     for exc_class in _INTERNAL_ERROR_TYPES:
         fastapi_app.add_exception_handler(exc_class, _handle_500)
 
