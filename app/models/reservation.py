@@ -48,3 +48,9 @@ class Reservation(Base):
 
     usuario = relationship("User", back_populates="reservas")
     empresa = relationship("Enterprise", back_populates="reservas")
+    mensagens = relationship(
+        "ReservationMessage",
+        back_populates="reserva",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

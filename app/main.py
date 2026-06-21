@@ -36,6 +36,7 @@ from app.core.exceptions import (
     MenuNotFoundError,
     MenuPageEmptyError,
     ReservationNotFoundError,
+    SenderNotInReservationError,
     UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
@@ -53,6 +54,7 @@ from app.routers import (
     notifications,
     photos,
     reports,
+    reservation_chat,
     reservations,
     transcriptions,
     tutoriais,
@@ -76,6 +78,7 @@ app.include_router(auto_apply.router)
 app.include_router(tutoriais.router)
 app.include_router(contacts.router)
 app.include_router(reservations.router)
+app.include_router(reservation_chat.router)
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +114,10 @@ _INTERNAL_ERROR_TYPES = (AutoApplyPersistenceError,)
 
 async def _handle_400(request: Request, exc: MandacaError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+async def _handle_403(request: Request, exc: MandacaError) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
 async def _handle_404(request: Request, exc: MandacaError) -> JSONResponse:
@@ -167,6 +174,7 @@ def _register_handlers(fastapi_app: FastAPI) -> None:
     fastapi_app.add_exception_handler(AudioServiceTimeoutError, _handle_504)
     fastapi_app.add_exception_handler(ChatRateLimitError, _handle_429)
     fastapi_app.add_exception_handler(ChatServiceTimeoutError, _handle_504)
+    fastapi_app.add_exception_handler(SenderNotInReservationError, _handle_403)
     fastapi_app.add_exception_handler(BusinessContextNotFoundError, _handle_404)
     fastapi_app.add_exception_handler(AssessmentPageEmptyError, _handle_404)
     fastapi_app.add_exception_handler(MenuPageEmptyError, _handle_404)
