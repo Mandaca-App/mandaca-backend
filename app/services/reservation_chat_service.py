@@ -10,18 +10,35 @@ from app.models.reservation import Reservation
 from app.models.reservation_message import ReservationMessage, TipoRemetente
 
 
-def get_history(reserva_id: UUID, db: Session) -> list[ReservationMessage]:
-    """Retorna as mensagens de uma reserva ordenadas por data de envio."""
+def get_history(
+    reserva_id: UUID,
+    db: Session,
+    limit: int = 100,
+    before_id: UUID | None = None,
+) -> list[ReservationMessage]:
+    """Retorna mensagens de uma reserva ordenadas por data de envio (ASC).
+
+    Com `before_id`, retorna as `limit` mensagens imediatamente anteriores à
+    mensagem informada (paginação para carregar histórico mais antigo).
+    """
     reservation_service.get_by_id(reserva_id, db)
 
-    return list(
-        db.execute(
-            select(ReservationMessage)
-            .where(ReservationMessage.reserva_id == reserva_id)
-            .order_by(ReservationMessage.criado_em.asc())
+    query = select(ReservationMessage).where(ReservationMessage.reserva_id == reserva_id)
+
+    if before_id is not None:
+        pivot = db.get(ReservationMessage, before_id)
+        if pivot is not None:
+            query = query.where(ReservationMessage.criado_em < pivot.criado_em)
+        messages = list(
+            db.execute(query.order_by(ReservationMessage.criado_em.desc()).limit(limit))
+            .scalars()
+            .all()
         )
-        .scalars()
-        .all()
+        messages.reverse()
+        return messages
+
+    return list(
+        db.execute(query.order_by(ReservationMessage.criado_em.asc()).limit(limit)).scalars().all()
     )
 
 
