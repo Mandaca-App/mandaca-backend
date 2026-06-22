@@ -5,6 +5,7 @@ persistência. Usa TestClient.websocket_connect + DB SQLite in-memory.
 """
 
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import WebSocketDisconnect
@@ -27,7 +28,7 @@ def _seed(db):
     db.flush()
 
     reserva = Reservation(
-        num_mesas=1,
+        horario_reserva=datetime(2026, 1, 1, tzinfo=timezone.utc),
         num_pessoas=2,
         usuario_id=turista.id_usuario,
         empresa_id=empresa.id_empresa,

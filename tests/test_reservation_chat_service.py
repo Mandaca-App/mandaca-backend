@@ -4,7 +4,6 @@ Lógica de domínio do chat de reservas: histórico e envio de mensagens com
 derivação do tipo de remetente. Supabase/SQLAlchemy mockados via MagicMock.
 """
 
-"""
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
@@ -35,7 +34,7 @@ def _mock_db() -> MagicMock:
 def _reservation() -> Reservation:
     return Reservation(
         id_reserva=RESERVA_ID,
-        num_mesas=1,
+        horario_reserva=datetime(2026, 1, 1, tzinfo=timezone.utc),
         num_pessoas=2,
         usuario_id=TURISTA_ID,
         empresa_id=EMPRESA_ID,
@@ -139,4 +138,3 @@ def test_given_outsider_sender_when_send_message_then_raises_forbidden():
     with pytest.raises(SenderNotInReservationError):
         reservation_chat_service.send_message(RESERVA_ID, uuid.uuid4(), "intruso", db)
     db.add.assert_not_called()
-"""
