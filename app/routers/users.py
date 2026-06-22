@@ -14,6 +14,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 class UserResponse(BaseModel):
     id_usuario: UUID
+    auth_user_id: Optional[UUID] = None
+    email: Optional[str] = None
     tipo_usuario: TipoUsuario
     nome: str
     cpf: str
@@ -26,6 +28,8 @@ class UserResponse(BaseModel):
     def from_user(cls, user: User):
         return cls(
             id_usuario=user.id_usuario,
+            auth_user_id=user.auth_user_id,
+            email=user.email,
             tipo_usuario=user.tipo_usuario,
             nome=user.nome,
             cpf=user.cpf,
