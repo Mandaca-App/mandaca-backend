@@ -1,7 +1,8 @@
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,7 +22,7 @@ class Reservation(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    num_mesas: Mapped[int] = mapped_column(Integer, nullable=False)
+    horario_reserva: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     num_pessoas: Mapped[int] = mapped_column(Integer, nullable=False)
     mensagem: Mapped[str | None] = mapped_column(String(120), nullable=True)
     status: Mapped[StatusReserva] = mapped_column(

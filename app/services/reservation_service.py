@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import (
     EnterpriseNotFoundError,
@@ -17,7 +17,9 @@ from app.schemas.reservations import ReservationCreate
 def get_by_id(reservation_id: UUID, db: Session) -> Reservation:
     """Busca uma reserva pelo ID ou lança ReservationNotFoundError."""
     reservation = db.execute(
-        select(Reservation).where(Reservation.id_reserva == reservation_id)
+        select(Reservation)
+        .options(joinedload(Reservation.usuario))
+        .where(Reservation.id_reserva == reservation_id)
     ).scalar_one_or_none()
 
     if not reservation:
@@ -35,6 +37,7 @@ def list_by_enterprise(empresa_id: UUID, db: Session) -> list[Reservation]:
     return list(
         db.execute(
             select(Reservation)
+            .options(joinedload(Reservation.usuario))
             .where(Reservation.empresa_id == empresa_id)
             .order_by(Reservation.status.asc())
         )
@@ -52,6 +55,7 @@ def list_by_user(usuario_id: UUID, db: Session) -> list[Reservation]:
     return list(
         db.execute(
             select(Reservation)
+            .options(joinedload(Reservation.usuario))
             .where(Reservation.usuario_id == usuario_id)
             .order_by(Reservation.status.asc())
         )
@@ -73,7 +77,7 @@ def create(payload: ReservationCreate, db: Session) -> Reservation:
             raise UserNotFoundError(payload.usuario_id)
 
     reservation = Reservation(
-        num_mesas=payload.num_mesas,
+        horario_reserva=payload.horario_reserva,
         num_pessoas=payload.num_pessoas,
         mensagem=payload.mensagem,
         status=StatusReserva.AGUARDANDO,

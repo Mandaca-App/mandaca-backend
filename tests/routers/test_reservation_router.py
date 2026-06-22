@@ -6,6 +6,7 @@ Estratégia: service completamente mockado; lógica de negócio é coberta em te
 """
 
 import uuid
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -22,11 +23,14 @@ client = TestClient(app, raise_server_exceptions=False)
 FAKE_RESERVATION_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 FAKE_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 FAKE_ENTERPRISE_ID = uuid.UUID("00000000-0000-0000-0000-000000000003")
+FAKE_DATE = datetime(2026, 6, 20, 19, 30)  # <-- Adicionar uma data fixa para os testes
+FAKE_DATE_STR = FAKE_DATE.isoformat()
 
 _RESERVATION_RESPONSE = SimpleNamespace(
     id_reserva=FAKE_RESERVATION_ID,
-    num_mesas=2,
     num_pessoas=4,
+    horario_reserva=FAKE_DATE,  # <-- Adicionar
+    usuario_nome="Usuário Teste",  # <-- Adicionar
     mensagem="Mesa perto da janela.",
     status=StatusReserva.AGUARDANDO,
     usuario_id=FAKE_USER_ID,
@@ -35,8 +39,9 @@ _RESERVATION_RESPONSE = SimpleNamespace(
 
 _ACCEPTED_RESERVATION_RESPONSE = SimpleNamespace(
     id_reserva=FAKE_RESERVATION_ID,
-    num_mesas=2,
     num_pessoas=4,
+    horario_reserva=FAKE_DATE,  # <-- Adicionar
+    usuario_nome="Usuário Teste",  # <-- Adicionar
     mensagem="Mesa perto da janela.",
     status=StatusReserva.ACEITO,
     usuario_id=FAKE_USER_ID,
@@ -45,8 +50,9 @@ _ACCEPTED_RESERVATION_RESPONSE = SimpleNamespace(
 
 _RESERVATION_NO_OPTIONAL = SimpleNamespace(
     id_reserva=FAKE_RESERVATION_ID,
-    num_mesas=1,
     num_pessoas=2,
+    horario_reserva=FAKE_DATE,  # <-- Adicionar
+    usuario_nome=None,  # <-- Adicionar
     mensagem=None,
     status=StatusReserva.AGUARDANDO,
     usuario_id=None,
@@ -79,7 +85,7 @@ def test_given_valid_payload_when_create_then_returns_201(db_mock):
         response = client.post(
             "/reservations/",
             json={
-                "num_mesas": 2,
+                "horario_reserva": FAKE_DATE_STR,
                 "num_pessoas": 4,
                 "mensagem": "Mesa perto da janela.",
                 "usuario_id": str(FAKE_USER_ID),
@@ -90,7 +96,8 @@ def test_given_valid_payload_when_create_then_returns_201(db_mock):
     assert response.status_code == 201
     data = response.json()
     assert data["id_reserva"] == str(FAKE_RESERVATION_ID)
-    assert data["num_mesas"] == 2
+    assert data["horario_reserva"] == FAKE_DATE_STR
+    assert data["usuario_nome"] == "Usuário Teste"
     assert data["num_pessoas"] == 4
     assert data["status"] == "aguardando"
     assert data["empresa_id"] == str(FAKE_ENTERPRISE_ID)
@@ -103,7 +110,7 @@ def test_given_payload_without_optional_fields_when_create_then_returns_201(db_m
     ):
         response = client.post(
             "/reservations/",
-            json={"num_mesas": 1, "num_pessoas": 2},
+            json={"horario_reserva": FAKE_DATE_STR, "num_pessoas": 2},
         )
 
     assert response.status_code == 201
@@ -113,7 +120,7 @@ def test_given_payload_without_optional_fields_when_create_then_returns_201(db_m
     assert data["empresa_id"] is None
 
 
-def test_given_missing_num_mesas_when_create_then_returns_422(db_mock):
+def test_given_missing_horario_reserva_when_create_then_returns_422(db_mock):
     response = client.post(
         "/reservations/",
         json={"num_pessoas": 4},
@@ -124,7 +131,7 @@ def test_given_missing_num_mesas_when_create_then_returns_422(db_mock):
 def test_given_missing_num_pessoas_when_create_then_returns_422(db_mock):
     response = client.post(
         "/reservations/",
-        json={"num_mesas": 2},
+        json={"horario_reserva": FAKE_DATE_STR},
     )
     assert response.status_code == 422
 
@@ -136,7 +143,7 @@ def test_given_create_response_when_status_is_aguardando_by_default(db_mock):
     ):
         response = client.post(
             "/reservations/",
-            json={"num_mesas": 2, "num_pessoas": 4},
+            json={"horario_reserva": FAKE_DATE_STR, "num_pessoas": 4},
         )
 
     assert response.json()["status"] == "aguardando"
