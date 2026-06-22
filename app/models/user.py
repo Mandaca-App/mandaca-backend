@@ -26,6 +26,10 @@ class User(Base):
     tipo_usuario: Mapped[TipoUsuario] = mapped_column(
         Enum(TipoUsuario, name="tipo_usuario_enum"), nullable=False, default=TipoUsuario.TURISTA
     )
+    auth_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, unique=True, index=True
+    )
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     cpf: Mapped[str] = mapped_column(String(11), nullable=False, unique=True)
     url_foto_usuario: Mapped[str | None] = mapped_column(Text, nullable=True)
