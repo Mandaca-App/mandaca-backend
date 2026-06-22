@@ -14,6 +14,12 @@ class ReservationMessageCreate(BaseModel):
     ]
 
 
+class ReservationChatIncoming(BaseModel):
+    conteudo: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+    ]
+
+
 class ReservationMessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
