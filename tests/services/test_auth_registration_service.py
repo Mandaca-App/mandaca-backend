@@ -5,7 +5,11 @@ import pytest
 from sqlalchemy import func, select
 
 from app.core.auth_provider import AuthProviderUser
-from app.core.exceptions import AuthEmailAlreadyExistsError, UserRegistrationPersistenceError
+from app.core.exceptions import (
+    AuthEmailAlreadyExistsError,
+    UserCpfAlreadyExistsError,
+    UserRegistrationPersistenceError,
+)
 from app.models.user import TipoUsuario, User
 from app.schemas.auth import UserRegisterRequest
 from app.services.auth_registration_service import AuthRegistrationService
@@ -66,6 +70,48 @@ def test_given_email_already_exists_when_register_then_raises_and_does_not_persi
         service.register(_payload(), db)
 
     assert _count_users(db) == 0
+
+
+def test_given_cpf_already_exists_when_register_then_does_not_call_auth_provider(db):
+    db.add(
+        User(
+            tipo_usuario=TipoUsuario.TURISTA,
+            nome="Usuario Existente",
+            cpf="12345678901",
+        )
+    )
+    db.commit()
+
+    class UnexpectedCreateProvider(FakeAuthProvider):
+        def create_user(self, email: str, password: str) -> AuthProviderUser:
+            raise AssertionError("Auth provider nao deve ser chamado para CPF duplicado")
+
+    service = AuthRegistrationService(auth_provider=UnexpectedCreateProvider())
+
+    with pytest.raises(UserCpfAlreadyExistsError):
+        service.register(_payload(), db)
+
+    assert _count_users(db) == 1
+
+
+def test_given_concurrent_cpf_conflict_when_register_then_rolls_back_auth_user(db):
+    db.add(
+        User(
+            tipo_usuario=TipoUsuario.TURISTA,
+            nome="Usuario Existente",
+            cpf="12345678901",
+        )
+    )
+    db.commit()
+    provider = FakeAuthProvider()
+    service = AuthRegistrationService(auth_provider=provider)
+
+    with patch.object(db, "scalar", return_value=None):
+        with pytest.raises(UserCpfAlreadyExistsError):
+            service.register(_payload(), db)
+
+    assert provider.deleted_ids == [provider.auth_user_id]
+    assert _count_users(db) == 1
 
 
 def test_given_local_persistence_failure_when_register_then_rolls_back_auth_user(db):

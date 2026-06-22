@@ -41,6 +41,7 @@ from app.core.exceptions import (
     UnsupportedAudioFormatError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
+    UserCpfAlreadyExistsError,
     UserNotFoundError,
     UserRegistrationPersistenceError,
 )
@@ -103,6 +104,7 @@ _BAD_REQUEST_TYPES = (
     AuthEmailAlreadyExistsError,
     DuplicateChatbotTypeError,
     DuplicateEnterpriseNameError,
+    UserCpfAlreadyExistsError,
     UserAlreadyHasEnterpriseError,
     UserAlreadyLinkedError,
 )

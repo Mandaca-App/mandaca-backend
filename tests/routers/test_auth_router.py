@@ -1,6 +1,10 @@
 import uuid
 
-from app.core.exceptions import AuthEmailAlreadyExistsError, UserRegistrationPersistenceError
+from app.core.exceptions import (
+    AuthEmailAlreadyExistsError,
+    UserCpfAlreadyExistsError,
+    UserRegistrationPersistenceError,
+)
 from app.main import app
 from app.models.user import TipoUsuario, User
 from app.routers.auth import get_auth_registration_service
@@ -55,6 +59,20 @@ def test_given_existing_email_when_register_then_returns_400(client):
 
     assert response.status_code == 400
     assert "email" in response.json()["detail"].lower()
+    assert "uso" in response.json()["detail"].lower()
+
+
+def test_given_existing_cpf_when_register_then_returns_400(client):
+    class DuplicateCpfService:
+        def register(self, payload, db):
+            raise UserCpfAlreadyExistsError(payload.cpf)
+
+    app.dependency_overrides[get_auth_registration_service] = lambda: DuplicateCpfService()
+
+    response = client.post("/auth/register", json=_payload())
+
+    assert response.status_code == 400
+    assert "cpf" in response.json()["detail"].lower()
     assert "uso" in response.json()["detail"].lower()
 
 

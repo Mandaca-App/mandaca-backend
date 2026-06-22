@@ -47,6 +47,12 @@ class AuthEmailAlreadyExistsError(MandacaError):
         self.email = email
 
 
+class UserCpfAlreadyExistsError(MandacaError):
+    def __init__(self, cpf: str) -> None:
+        super().__init__(f"CPF ja esta em uso: {cpf}")
+        self.cpf = cpf
+
+
 class UserRegistrationPersistenceError(MandacaError):
     def __init__(self) -> None:
         super().__init__("Falha no cadastro do usuario.")
