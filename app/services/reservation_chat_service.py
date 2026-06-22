@@ -46,8 +46,7 @@ def send_message(
     reserva_id: UUID, remetente_id: UUID, conteudo: str, db: Session
 ) -> ReservationMessage:
     """Grava uma mensagem na reserva, derivando o tipo do remetente."""
-    reservation = reservation_service.get_by_id(reserva_id, db)
-    tipo_remetente = _resolve_sender_type(reservation, remetente_id, db)
+    tipo_remetente = resolve_membership(reserva_id, remetente_id, db)
 
     message = ReservationMessage(
         reserva_id=reserva_id,
@@ -60,6 +59,12 @@ def send_message(
     db.commit()
     db.refresh(message)
     return message
+
+
+def resolve_membership(reserva_id: UUID, remetente_id: UUID, db: Session) -> TipoRemetente:
+    """Valida que o remetente participa da reserva e retorna seu tipo."""
+    reservation = reservation_service.get_by_id(reserva_id, db)
+    return _resolve_sender_type(reservation, remetente_id, db)
 
 
 def _resolve_sender_type(
