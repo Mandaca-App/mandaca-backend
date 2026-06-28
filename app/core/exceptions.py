@@ -41,6 +41,23 @@ class UserAlreadyLinkedError(MandacaError):
         self.usuario_id = usuario_id
 
 
+class AuthEmailAlreadyExistsError(MandacaError):
+    def __init__(self, email: str) -> None:
+        super().__init__(f"Email ja esta em uso: {email}")
+        self.email = email
+
+
+class UserCpfAlreadyExistsError(MandacaError):
+    def __init__(self, cpf: str) -> None:
+        super().__init__(f"CPF ja esta em uso: {cpf}")
+        self.cpf = cpf
+
+
+class UserRegistrationPersistenceError(MandacaError):
+    def __init__(self) -> None:
+        super().__init__("Falha no cadastro do usuario.")
+
+
 class AddressNotFoundError(MandacaError):
     def __init__(self, endereco: str) -> None:
         super().__init__(f"Endereço não encontrado ou não geocodificável: {endereco}")
